@@ -21,36 +21,36 @@
     .npc-label b { font-family: 'Noto Sans SC', sans-serif; color: #D23B2E; font-size: 14px; }
     .npc-label small { color: #555; font-size: 11px; font-weight: 700; }
     .hud {
-        position: absolute; top: 15px; left: 15px; z-index: 20; background: rgba(0,0,0,0.7);
-        color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: bold; backdrop-filter: blur(5px);
+        position: absolute; top: 15px; left: 15px; z-index: 20; background: rgba(0,0,0,0.75);
+        color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: bold; backdrop-filter: blur(5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
 </style>
 </head>
 <body>
 
 <div id="app">
-    <div class="hud">🏮 Khu Phố Hán Ngữ 3D - Nhấp vào màn hình để đi, bấm NPC để giao tiếp</div>
+    <div class="hud">🏮 Khu Phố Hán Ngữ 3D - Bấm vào mặt đất để di chuyển, nhấp vào NPC để tương tác học tập!</div>
 </div>
 
-<!-- Các thư viện 3D và logic game -->
+<!-- Các thư viện 3D Three.js và World Script -->
 <script src="vendor/three.min.js"></script>
 <script src="vendor/OrbitControls.js"></script>
 <script src="vendor/hanzi-writer.min.js"></script>
 <script src="world.js"></script>
 <script>
-    // Khởi động thế giới 3D khu phố lớn ngay khi trang tải xong
     window.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById('app');
         if (window.World && typeof World.init === 'function') {
             World.init(container, {
                 onNpc: function(key) {
-                    alert('Bạn đã trò chuyện với nhân vật: ' + key + '. Hãy sẵn sàng học từ vựng mới từ giáo trình!');
+                    alert('Đã kết nối với NPC: ' + key + '. Chuẩn bị bước vào thử thách tiếng Trung cao cấp!');
                 }
             });
-            // Tải bản đồ khu phố lớn (giant_town) với đầy đủ NPC
+            // Tải bản đồ thế giới mở khu phố lớn (giant_town)
             World.load('giant_town', {
-                cast: ['teacher', 'seller', 'cook', 'manager'],
-                meName: 'Bạn'
+                cast: ['teacher', 'seller', 'cook', 'manager', 'student'],
+                meName: 'Học viên'
             });
         }
     });
