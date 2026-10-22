@@ -1,26 +1,240 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Lớn lên cùng tiếng Trung</title>
-<meta name="theme-color" content="#D23B2E">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+SC:wght@500;700&family=Nunito:wght@400;700;800&display=swap">
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khu Phố Hán Ngữ Nhộn Nhịp - TRUNG12HOCTAPTIENGTRUNG</title>
+    <style>
+        :root {
+            --primary: #ff6b6b;
+            --secondary: #48dbfb;
+            --dark: #222f3e;
+            --light: #f1f2f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #74b9ff, #a29bfe);
+            margin: 0;
+            padding: 20px;
+            color: var(--dark);
+        }
+        .game-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        header h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: var(--dark);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .town-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .location-card {
+            background: white;
+            border: 2px solid #dfe4ea;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .location-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 8px 15px rgba(255, 107, 107, 0.2);
+        }
+        .location-card h3 {
+            margin: 10px 0 5px 0;
+            color: #2d3436;
+        }
+        .location-card p {
+            font-size: 13px;
+            color: #636e72;
+            margin: 0;
+        }
+        .interaction-panel {
+            background: #f8f9fa;
+            border-left: 6px solid #00b894;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            margin-top: 20px;
+        }
+        .npc-dialogue {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: #2d3436;
+        }
+        .quiz-options button {
+            display: block;
+            width: 100%;
+            background: white;
+            border: 1px solid #b2bec3;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+        .quiz-options button:hover {
+            background: #74b9ff;
+            color: white;
+            border-color: #74b9ff;
+        }
+        .feedback {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-<div id="app"></div>
-<script src="vendor/three.min.js"></script>
-<script src="vendor/OrbitControls.js"></script>
-<script src="vendor/hanzi-writer.min.js"></script>
-<script src="content-hk1.js"></script>
-<script src="content-hk1b.js"></script>
-<script src="content-hk1-book.js"></script>
-<script src="content-hk1c.js"></script>
-<script src="strokes-hk1.js"></script>
-<script src="world.js"></script>
-<script src="app.js"></script>
+
+<div class="game-wrapper">
+    <header>
+        <h1>🏮 Khu Phố Hán Ngữ Nhộn Nhịp</h1>
+        <p>Khám phá thế giới mở, giao tiếp cùng NPC và học trọn vẹn bộ Phát Triển Hán Ngữ!</p>
+    </header>
+
+    <div class="stats-bar">
+        <div>👤 Người chơi: <span id="player-level">Học viên tập sự</span></div>
+        <div>⭐ Điểm kinh nghiệm (EXP): <span id="player-exp">0</span></div>
+        <div>🏆 Thử thách hoàn thành: <span id="quest-count">0</span>/4</div>
+    </div>
+
+    <div class="town-grid">
+        <div class="location-card" onclick="visitLocation('cafe')">
+            <div style="font-size: 30px;">🧋</div>
+            <h3>Quán Trà Sữa</h3>
+            <p>Gặp Tiểu Lệ gọi món & luyện giao tiếp</p>
+        </div>
+        <div class="location-card" onclick="visitLocation('market')">
+            <div style="font-size: 30px;">🛒</div>
+            <h3>Chợ Truyền Thống</h3>
+            <p>Gặp Bác chủ tiệm mặc cả & mua sắm</p>
+        </div>
+        <div class="location-card" onclick="visitLocation('library')">
+            <div style="font-size: 30px;">📚</div>
+            <h3>Thư Viện Cao Cấp</h3>
+            <p>Gặp Thầy Vương luyện Đọc & Ngữ pháp</p>
+        </div>
+        <div class="location-card" onclick="visitLocation('park')">
+            <div style="font-size: 30px;">🌳</div>
+            <h3>Công Viên Thành Phố</h3>
+            <p>Gặp Cụ già trò chuyện văn hóa & đời sống</p>
+        </div>
+    </div>
+
+    <div id="interaction-panel" class="interaction-panel">
+        <h3 id="npc-title" style="margin-top: 0; color: #00b894;">Tên NPC</h3>
+        <div class="npc-dialogue" id="npc-text">Nội dung hội thoại...</div>
+        <div class="quiz-options" id="quiz-options"></div>
+        <div class="feedback" id="feedback-msg"></div>
+    </div>
+</div>
+
+<script>
+    let exp = 0;
+    let completedQuests = 0;
+
+    const gameData = {
+        cafe: {
+            npc: "Nhân viên pha chế - Tiểu Lệ (Quán Trà Sữa)",
+            text: "欢迎光临！(Chào mừng quý khách!) Bạn muốn gọi loại đồ uống nào dựa theo bài học giao tiếp nâng cao?",
+            options: [
+                { text: "A. 我要一杯半糖去冰的奶茶。(Cho tôi một cốc trà sữa nửa đường, bỏ đá.)", correct: true },
+                { text: "B. 我去学校上课。(Tôi đến trường đi học.)", correct: false },
+                { text: "C. 这本书很难。(Cuốn sách này rất khó.)", correct: false }
+            ]
+        },
+        market: {
+            npc: "Chủ tiệm tạp hóa - Bác Trương (Chợ)",
+            text: "年轻人，买点什么？(Thanh niên mua gì nào?) Cụm từ nào biểu thị mức độ 'hoàn toàn / triệt để' trong văn phong thương mại?",
+            options: [
+                { text: "A. 充分 (Chōngfèn - Đầy đủ, triệt để)", correct: true },
+                { text: "B. 简单 (Jiǎndān - Đơn giản)", correct: false },
+                { text: "C. 缓慢 (Huǎnmàn - Chậm chạp)", correct: false }
+            ]
+        },
+        library: {
+            npc: "Giáo sư Vương (Thư Viện Đọc - Phát Triển Hán Ngữ)",
+            text: "Trong cấu trúc ngữ pháp cao cấp, khi muốn diễn tả quan hệ nhượng bộ 'Mặc dù... nhưng...', chúng ta dùng cặp từ nào?",
+            options: [
+                { text: "A. 因为...所以... (Vì... nên...)", correct: false },
+                { text: "B. 尽管...，但/却... (Mặc dù... nhưng...)", correct: true },
+                { text: "C. 只有...才... (Chỉ có... mới...)", correct: false }
+            ]
+        },
+        park: {
+            npc: "Cụ ông tập Thái Cực (Công Viên)",
+            text: "Chào cháu! Đọc hiểu đoạn văn trong giáo trình: Người hiện đại '往往只关注工作效率，而忽视了身心健康'. Từ '往往' có nghĩa là gì?",
+            options: [
+                { text: "A. Thường, hay xảy ra", correct: true },
+                { text: "B. Tuyệt đối không", correct: false },
+                { text: "C. Đột nhiên", correct: false }
+            ]
+        }
+    };
+
+    function visitLocation(locationKey) {
+        const data = gameData[locationKey];
+        const panel = document.getElementById('interaction-panel');
+        
+        document.getElementById('npc-title').innerText = data.npc;
+        document.getElementById('npc-text').innerText = data.text;
+        document.getElementById('feedback-msg').innerText = "";
+
+        let optionsHtml = "";
+        data.options.forEach((opt, index) => {
+            optionsHtml += `<button onclick="checkAnswer(${opt.correct})">${opt.text}</button>`;
+        });
+
+        document.getElementById('quiz-options').innerHTML = optionsHtml;
+        panel.style.display = 'block';
+    }
+
+    function checkAnswer(isCorrect) {
+        const feedback = document.getElementById('feedback-msg');
+        if (isCorrect) {
+            feedback.style.color = "#00b894";
+            feedback.innerText = "🎉 Chính xác! Bạn đã giao tiếp thành công và nhận được +25 điểm kinh nghiệm (EXP).";
+            exp += 25;
+            completedQuests++;
+            document.getElementById('player-exp').innerText = exp;
+            document.getElementById('quest-count').innerText = completedQuests;
+            if(exp >= 100) {
+                document.getElementById('player-level').innerText = "🌟 Bậc thầy Hán ngữ khu phố";
+            }
+        } else {
+            feedback.style.color = "#d63031";
+            feedback.innerText = "❌ Chưa chính xác rồi, hãy đọc lại giáo trình và thử lại nhé!";
+        }
+    }
+</script>
+
 </body>
 </html>
