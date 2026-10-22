@@ -581,7 +581,7 @@
         var b = h('button', { class: 'pick', onclick: function () {
           if (v === t) { b.classList.add('right'); [].forEach.call(g.children, function (x) { x.disabled = true; }); area.appendChild(hz(t[0], t[1], t[2], { big: true })); c.dock.appendChild(btn('Tiếp ▸', done, 'primary')); }
           else { c.miss(b); b.disabled = true; }
-        } }, [h('span', { class: 'pic' }, [v[3]]), state.settings.vi ? h('small', null, [v[2]]) : null]);
+        } }, [v[3] ? h('span', { class: 'pic' }, [v[3]]) : h('span', { class: 'pic zh', lang: 'zh-CN' }, [v[0]]), state.settings.vi ? h('small', null, [v[2]]) : null]);
         g.appendChild(b);
       });
       area.appendChild(g);
@@ -752,7 +752,7 @@
       if (sec.h) box.appendChild(h('h3', { class: 'kw-h', lang: 'zh-CN' }, [sec.h]));
       sec.lines.forEach(function (ln) { if (ln[2]) box.appendChild(h('button', { class: 'rline kw', onclick: function () { say(ln[1]); } }, [h('span', { class: 'who zh' }, [ln[0] ? ln[0] + '：' : '']), h('span', null, [h('span', { class: 'zh', lang: 'zh-CN' }, [ln[1]]), state.settings.py ? h('small', { class: 'py' }, [ln[2]]) : null])])); });
     });
-    c.body.appendChild(h('p', { class: 'hint' }, ['Đọc to nguyên văn 课文 · ' + C.book.name + ' · trang ' + b.page + '. Chạm một dòng để nghe.']));
+    c.body.appendChild(h('p', { class: 'hint' }, ['Đọc to nguyên văn 课文 · ' + (b.src || C.book.name) + ' · trang ' + b.page + '. Chạm một dòng để nghe.']));
     c.body.appendChild(box);
     nextBtn(c, 'Đọc hiểu →');
   }
@@ -978,7 +978,7 @@
   function openTextbook(l, tab) {
     l = l || curLesson().l; tab = tab || 'kw';
     var b = bk(l), sh = sheet('📘 第' + l.no + '课 ' + l.zh, 'textbook');
-    sh.sub.textContent = C.book.name + ' · trang ' + (b ? b.page : '?') + ' · ' + l.py;
+    sh.sub.textContent = ((b && b.src) || C.book.name) + ' · trang ' + (b ? b.page : '?') + ' · ' + l.py;
     var tabs = h('nav', { class: 'chips book-tabs' });
     BOOK_TABS.forEach(function (t) { tabs.appendChild(h('button', { class: 'chip' + (t[0] === tab ? ' on' : ''), onclick: function () { openTextbook(l, t[0]); } }, [h('small', null, [t[1]])])); });
     sh.body.appendChild(tabs);
@@ -1153,12 +1153,13 @@
 
   /* ========== Khu phố & công viên ========== */
   var PLACES = [
-    { key: 'home', label: '我家', sub: 'Nhà em', icon: '🏠', x: -5.2, z: -3.1, w: 2.6, d: 2, h: 2.2, c: '#FCE4C8', roof: '#C0392B', bg: '#E6604E', text: '我家', lessons: [1, 2, 5, 15] },
-    { key: 'school', label: '学校', sub: 'Trường · 4 khoa', icon: '🏫', x: -1.3, z: -3.2, w: 4, d: 2.2, h: 2.8, c: '#F3E3CF', roof: '#D23B2E', bg: '#D23B2E', text: '北京语言大学', lessons: [4, 6, 7, 10, 11, 12, 14], khoa: true },
+    { key: 'home', label: '我家', sub: 'Nhà em', icon: '🏠', x: -5.2, z: -3.1, w: 2.6, d: 2, h: 2.2, c: '#FCE4C8', roof: '#C0392B', bg: '#E6604E', text: '我家', lessons: [1, 2, 5, 15, 20, 21] },
+    { key: 'school', label: '学校', sub: 'Trường · 4 khoa', icon: '🏫', x: -1.3, z: -3.2, w: 4, d: 2.2, h: 2.8, c: '#F3E3CF', roof: '#D23B2E', bg: '#D23B2E', text: '北京语言大学', lessons: [4, 6, 7, 10, 11, 12, 14, 16, 17, 22, 23, 24], khoa: true },
     { key: 'bank', label: '银行', sub: 'Ngân hàng', icon: '🏦', x: 2.6, z: -3.1, w: 2.4, d: 2, h: 2.4, c: '#E9EEF3', roof: '#2E4A7A', bg: '#C0392B', text: '中国银行', lessons: [9] },
-    { key: 'post', label: '邮局', sub: 'Bưu điện · phố', icon: '🏤', x: 5.4, z: -3.1, w: 2.2, d: 2, h: 2.1, c: '#DFF3E8', roof: '#1F9D74', bg: '#1F9D74', text: '邮局', lessons: [3] },
+    { key: 'post', label: '邮局', sub: 'Bưu điện · phố', icon: '🏤', x: 5.4, z: -3.1, w: 2.2, d: 2, h: 2.1, c: '#DFF3E8', roof: '#1F9D74', bg: '#1F9D74', text: '邮局', lessons: [3, 18] },
     { key: 'market', label: '水果店', sub: 'Chợ hoa quả', icon: '🍎', x: -5, z: 3, w: 2.6, d: 1.8, h: 1.9, c: '#FFF1C9', roof: '#E6604E', bg: '#F28C28', text: '水果店', lessons: [8], r: Math.PI },
     { key: 'park', kind: 'park', label: '公园', sub: 'Công viên · ôn bài', icon: '🌳', x: -0.8, z: 3.6, d: 0.5, r: Math.PI, text: '公园' },
+    { key: 'shop', label: '服装店', sub: 'Cửa hàng quần áo', icon: '👗', x: 1.9, z: 3, w: 1.9, d: 1.7, h: 1.9, c: '#F9E1EC', roof: '#B03A78', bg: '#B03A78', text: '服装店', lessons: [19], r: Math.PI },
     { key: 'airport', label: '机场', sub: 'Sân bay', icon: '✈️', x: 4.7, z: 3, w: 3.2, d: 1.8, h: 1.8, c: '#DDE9F4', roof: '#4E8DE2', bg: '#10233F', text: '机场', lessons: [13], r: Math.PI }
   ];
   function lessonByNo(n) { var r = null; C.semesters[0].lessons.forEach(function (l) { if (l.no === n) r = l; }); return r; }
