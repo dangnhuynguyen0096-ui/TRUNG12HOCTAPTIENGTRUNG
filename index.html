@@ -3,57 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Khu Phố Hán Ngữ 3D - TRUNG12HOCTAPTIENGTRUNG</title>
+<title>Lớn lên cùng tiếng Trung</title>
 <meta name="theme-color" content="#D23B2E">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+SC:wght@500;700&family=Nunito:wght@400;700;800&display=swap">
-<style>
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Nunito', sans-serif; background: #1D2B45; }
-    #app { width: 100%; height: 100%; position: relative; }
-    .world-canvas { display: block; width: 100%; height: 100%; outline: none; }
-    .label-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 10; }
-    .npc-label {
-        position: absolute; pointer-events: auto; background: rgba(255, 255, 255, 0.95);
-        border: 2px solid #D23B2E; padding: 6px 12px; border-radius: 20px;
-        transform: translate(-50%, -100%); cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transition: transform 0.2s; display: flex; align-items: center; gap: 6px;
-    }
-    .npc-label:hover { transform: translate(-50%, -100%) scale(1.08); background: #fff; }
-    .npc-label b { font-family: 'Noto Sans SC', sans-serif; color: #D23B2E; font-size: 14px; }
-    .npc-label small { color: #555; font-size: 11px; font-weight: 700; }
-    .hud {
-        position: absolute; top: 15px; left: 15px; z-index: 20; background: rgba(0,0,0,0.75);
-        color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: bold; backdrop-filter: blur(5px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+SC:wght@500;700&family=Nunito:wght@400;700;800&display=swap">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<div id="app">
-    <div class="hud">🏮 Khu Phố Hán Ngữ 3D - Bấm vào mặt đất để di chuyển, nhấp vào NPC để tương tác học tập!</div>
-</div>
-
-<!-- Các thư viện 3D Three.js và World Script -->
+<div id="app"></div>
 <script src="vendor/three.min.js"></script>
 <script src="vendor/OrbitControls.js"></script>
 <script src="vendor/hanzi-writer.min.js"></script>
+<script src="content-hk1.js"></script>
+<script src="content-hk1b.js"></script>
+<script src="content-hk1-book.js"></script>
+<script src="content-hk1c.js"></script>
+  <script src="content-hk3.js"></script>
+<script src="strokes-hk1.js"></script>
 <script src="world.js"></script>
-<script>
-    window.addEventListener('DOMContentLoaded', function() {
-        const container = document.getElementById('app');
-        if (window.World && typeof World.init === 'function') {
-            World.init(container, {
-                onNpc: function(key) {
-                    alert('Đã kết nối với NPC: ' + key + '. Chuẩn bị bước vào thử thách tiếng Trung cao cấp!');
-                }
-            });
-            // Tải bản đồ thế giới mở khu phố lớn (giant_town)
-            World.load('giant_town', {
-                cast: ['teacher', 'seller', 'cook', 'manager', 'student'],
-                meName: 'Học viên'
-            });
-        }
-    });
-</script>
+<script src="app.js"></script>
 </body>
 </html>

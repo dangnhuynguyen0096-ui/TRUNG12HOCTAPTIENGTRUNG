@@ -370,3 +370,9 @@ body.in-game .toast { bottom: auto; top: calc(124px + env(safe-area-inset-top, 0
 .npc-label.place { background: #fff; font-size: 14px; padding: 4px 12px 4px 8px; }
 .npc-label.place i { width: auto; height: auto; background: none; font-style: normal; font-size: 18px; }
 .rtab.town b, .rtab.park b { font-family: inherit; }
+/* bài tập đại học */
+.typein { width: 100%; box-sizing: border-box; margin: 10px 0 4px; padding: 10px 12px; font: 1.1rem/1.6 inherit; font-family: inherit; border: 2px solid var(--line, #E6D9C2); border-radius: 12px; background: var(--card); color: inherit; resize: vertical; }
+.typein:focus { outline: none; border-color: var(--red); }
+.cloze { font-size: 1.25rem; line-height: 1.9; }
+.cloze .blank { color: var(--red); font-weight: 700; padding: 0 4px; }
+.sample { margin-top: 10px; }

@@ -196,15 +196,14 @@
   function rankOf(n) { var r = RANKS[0]; RANKS.forEach(function (x) { if (n >= x[0]) r = x; }); return r; }
   function nextRank(n) { for (var i = 0; i < RANKS.length; i++) if (RANKS[i][0] > n) return RANKS[i]; return null; }
   function currentSem() {
-    var cur = C.semesters[0];
+    var cur = C.semesters.filter(function (s) { return s.id !== 'hk1' && !s.locked; })[0] || C.semesters[0];
     C.semesters.forEach(function (s) { if (!s.locked && s.lessons.length && s.lessons.some(function (l) { return passed(l.id); })) cur = s; });
     return cur;
   }
   function curLesson() {
     var x = state.cur && findLesson(state.cur);
     if (x && unlocked(x.s, x.s.lessons.indexOf(x.l))) return x;
-    var sem = C.semesters[0], pick = { s: sem, l: sem.lessons[0] };
-    C.semesters.forEach(function (s) { s.lessons.forEach(function (l, i) { if (unlocked(s, i)) pick = { s: s, l: l }; }); });
+    var adv = advLessons(), pick = adv.length ? findLesson(adv[0].id) : { s: C.semesters[0], l: C.semesters[0].lessons[0] };
     state.cur = pick.l.id; return pick;
   }
 
@@ -555,17 +554,21 @@
 
   /* ===== các phần luyện của từng khoa ===== */
   var TASKS = {
-    nghe: function (l) { return [{ name: 'Nghe và chọn hình', fn: tListen }, l.tones ? { name: 'Thanh điệu', fn: tTone } : null, { name: 'Nghe hiểu câu', fn: tComp }, bk(l) ? { name: 'Nghe bài khóa gốc', fn: tKwMeaning } : null]; },
+    nghe: function (l) { if (l.u) return [{ name: 'Nghe đoạn văn, chọn nghĩa', fn: tKwMeaning }, { name: 'Nghe đoạn văn, trả lời câu hỏi', fn: tParaQ }];
+      return [{ name: 'Nghe và chọn hình', fn: tListen }, l.tones ? { name: 'Thanh điệu', fn: tTone } : null, { name: 'Nghe hiểu câu', fn: tComp }, bk(l) ? { name: 'Nghe bài khóa gốc', fn: tKwMeaning } : null]; },
     noi: function (l) {
+      if (l.u) return [{ name: 'Đọc to bài khóa', fn: tReadAloud }, { name: 'Thảo luận (nói 3–4 câu)', fn: tDiscuss }];
       var kt = l.kantu || {};
       return [{ name: 'Nói theo câu mẫu', fn: tShadow }, bk(l) ? { name: 'Đóng vai bài khóa gốc', fn: tRole } : null, kt.pron ? { name: 'Nhìn tranh phát âm', fn: tPron } : null,
         kt.ask ? { name: 'Nhìn tranh trả lời', fn: tAsk } : null, kt.retell ? { name: 'Kể lại theo tranh', fn: tRetell } : null];
     },
     doc: function (l) {
+      if (l.u) return [{ name: 'Từ mới', fn: tVocab }, { name: 'Đọc bài khóa gốc', fn: tReadBook }, { name: 'Đọc hiểu', fn: tEx2 }, { name: 'Điền từ', fn: tCloze }, { name: 'Ngữ pháp', fn: tGrammar }, { name: 'Chọn câu đúng ngữ pháp', fn: tGQ }];
       return [{ name: 'Từ mới', fn: tVocab }, bk(l) ? { name: 'Đọc bài khóa gốc', fn: tReadBook } : { name: 'Đọc bài khóa', fn: tRead }, bk(l) ? { name: 'Đọc hiểu', fn: tEx2 } : null, { name: 'Ghép nghĩa', fn: tMatch }, { name: 'Ngữ pháp', fn: tGrammar },
         { name: 'Xếp câu', fn: tOrder }, C.challenges && C.challenges[l.id] ? { name: 'Thử thách', fn: tChallenge } : null];
     },
-    viet: function () { return [{ name: 'Viết chữ theo nét', fn: tWrite }, { name: 'Pinyin → chữ Hán', fn: tPyPick }]; }
+    viet: function (l) { if (l.u) return [{ name: 'Viết chữ theo nét', fn: tWrite }, { name: 'Viết câu theo cấu trúc', fn: tCompose }];
+      return [{ name: 'Viết chữ theo nét', fn: tWrite }, { name: 'Pinyin → chữ Hán', fn: tPyPick }]; }
   };
   function series(c, n, ask) { var q = 0; (function go() { c.body.querySelectorAll('.q-area').forEach(function (e) { e.remove(); }); c.dock.innerHTML = ''; if (q >= n) return c.next(); var area = h('div', { class: 'q-area' }); c.body.appendChild(area); ask(area, q, function () { q++; go(); }); })(); }
 
@@ -783,7 +786,7 @@
       list.appendChild(h('article', { class: 'gcard' }, [h('h3', null, [g.t]), h('p', null, [fill(g.d)]), exs]));
     });
     c.body.appendChild(list);
-    nextBtn(c, 'Xếp câu →');
+    nextBtn(c, c.l.u ? 'Tiếp ▸' : 'Xếp câu →');
   }
   function tOrder(c) {
     var items = c.l.order;
@@ -1118,6 +1121,125 @@
       });
     });
   }
+  /* ===== bài tập trình độ đại học (bài có l.u) ===== */
+  /* khóa '越……越' = mọi phần đều có; 'a|b' = có một trong các từ */
+  function keyHit(text, key) { var t = norm(text); return key.split('|').some(function (alt) { return alt.split('……').filter(Boolean).every(function (p) { return t.indexOf(norm(p)) >= 0; }); }); }
+  function keyChips(keys) { var w = h('div', { class: 'chips' }); keys.forEach(function (k) { w.appendChild(h('span', { class: 'chip', lang: 'zh-CN' }, [k.replace(/\|/g, ' / ')])); }); return w; }
+  function sentences(l) {
+    var out = [];
+    kwLines(l).forEach(function (k) {
+      var zs = k.zh.match(/[^。！？]+[。！？]+[”」]?/g) || [k.zh], ps = k.py.match(/[^.!?]+[.!?]+[”"]?/g) || [];
+      zs.forEach(function (z, i) { z = z.trim(); if (z.length >= 6) out.push({ zh: z, py: zs.length === ps.length ? ps[i].trim() : '' }); });
+    });
+    return out;
+  }
+  function optRow(area, c, right, wrong, show, done) {
+    var g = h('div', { class: 'opts' });
+    shuffle([right].concat(wrong)).forEach(function (o) {
+      var b = h('button', { class: 'opt', onclick: function () {
+        if (o === right) { b.classList.add('right'); [].forEach.call(g.children, function (x) { x.disabled = true; }); say(o); if (show) area.appendChild(show); c.dock.innerHTML = ''; c.dock.appendChild(btn('Tiếp ▸', done, 'primary')); }
+        else { c.miss(b); b.disabled = true; }
+      } }, [h('span', { class: 'zh', lang: 'zh-CN' }, [o])]);
+      g.appendChild(b);
+    });
+    area.appendChild(g);
+  }
+  function tParaQ(c) {
+    var ls = kwLines(c.l), qs = c.l.u.ex.slice(0, 6);
+    series(c, qs.length, function (area, q, done) {
+      var it = qs[q], para = ls[it.p] || ls[0];
+      area.appendChild(h('p', { class: 'hint' }, ['Câu ' + (q + 1) + '/' + qs.length + ': nghe đoạn văn (không nhìn chữ), rồi trả lời câu hỏi của giáo sư.']));
+      area.appendChild(h('button', { class: 'big-speak', 'aria-label': 'Nghe đoạn văn', onclick: function () { say(para.zh); } }, ['🔊']));
+      area.appendChild(h('div', { class: 'say-card' }, [hz(it.q, null, state.settings.vi ? it.qvi : null), h('button', { class: 'speak', 'aria-label': 'Nghe câu hỏi', onclick: function () { say(it.q); } }, ['❓'])]));
+      optRow(area, c, it.a, it.bad, h('p', { class: 'answer' }, [it.avi]), done);
+      area.appendChild(btn('Bí quá? Xem đoạn văn', function (e) { e.target.replaceWith(hz(para.zh, para.py, null)); }, 'ghost'));
+      setTimeout(function () { say(para.zh); }, 300);
+    });
+  }
+  function tReadAloud(c) {
+    var list = shuffle(sentences(c.l).filter(function (s) { return s.zh.length <= 40; })).slice(0, 5);
+    series(c, list.length, function (area, q, done) {
+      var t = list[q];
+      area.appendChild(h('p', { class: 'hint' }, ['Câu ' + (q + 1) + '/' + list.length + ': đọc to câu trong bài khóa (đạt khi khớp 70%). Thử đọc trước rồi mới nghe mẫu.']));
+      area.appendChild(h('div', { class: 'say-card' }, [hz(t.zh, t.py, null, { big: true }), h('button', { class: 'speak', 'aria-label': 'Nghe mẫu', onclick: function () { say(t.zh); } }, ['🔊'])]));
+      speakTask(area, c, t.zh, done, { need: 0.7 });
+    });
+  }
+  function tDiscuss(c) {
+    var qs = c.l.u.disc;
+    series(c, qs.length, function (area, q, done) {
+      var it = qs[q], need = Math.min(2, it.keys.length), finished = false;
+      area.appendChild(h('p', { class: 'hint' }, ['Thảo luận ' + (q + 1) + '/' + qs.length + ': trả lời bằng 3–4 câu (nói 🎤 hoặc gõ chữ Hán). Cần dùng ít nhất ' + need + ' cấu trúc dưới đây.']));
+      area.appendChild(h('div', { class: 'say-card' }, [hz(it.q, it.py, it.vi), h('button', { class: 'speak', 'aria-label': 'Nghe câu hỏi', onclick: function () { say(it.q); } }, ['🔊'])]));
+      area.appendChild(keyChips(it.keys));
+      var info = h('p', { class: 'mic-status', 'aria-live': 'polite' }, ['']);
+      function judge(text) {
+        if (finished) return;
+        var hit = it.keys.filter(function (k) { return keyHit(text, k); }), len = plainZh(text).length;
+        if (hit.length >= need && len >= 20) { finished = true; info.textContent = 'Đạt! Đã dùng: ' + hit.join('、') + ' · ' + len + ' chữ 👏'; cheer(); end(); }
+        else info.textContent = 'Mới dùng ' + hit.length + '/' + need + ' cấu trúc' + (len < 20 ? ', câu trả lời còn ngắn (' + len + '/20 chữ)' : '') + '. Nói/viết thêm nhé.';
+      }
+      function end() { area.querySelectorAll('button.mic-btn, textarea').forEach(function (b) { b.disabled = true; }); showSample(); c.dock.innerHTML = ''; c.dock.appendChild(btn('Tiếp ▸', done, 'primary')); }
+      function showSample() { if (area.querySelector('.sample')) return; area.appendChild(h('div', { class: 'sample' }, [h('p', { class: 'hint' }, ['Bài mẫu tham khảo:']), h('button', { class: 'ex', onclick: function () { say(it.sample); } }, [hz(it.sample, it.spy, null)])])); }
+      var heard = [];
+      var mb = micBox([it.sample], function (best, alts) { heard.push(alts[0]); judge(heard.join('')); }, { tip: 'Bấm 🎤 và nói; có thể nói nhiều lần, máy cộng dồn.', onNoMic: function () {} });
+      area.appendChild(mb);
+      var ta = h('textarea', { class: 'typein', rows: '3', lang: 'zh-CN', placeholder: 'Hoặc gõ câu trả lời bằng chữ Hán…' });
+      area.appendChild(ta); area.appendChild(info);
+      area.appendChild(h('div', { class: 'row wrap' }, [btn('Chấm bài viết', function () { judge(ta.value + heard.join('')); }, 'ghost'), btn('Xem bài mẫu', function () { if (!finished) c.miss(); showSample(); }, 'ghost'),
+        btn('✓ Em đã nói xong (tự chấm)', function () { if (!finished) { finished = true; end(); } }, 'ghost')]));
+    });
+  }
+  function tGQ(c) {
+    var qs = shuffle(c.l.u.gq);
+    series(c, qs.length, function (area, q, done) {
+      var it = qs[q];
+      area.appendChild(h('p', { class: 'hint' }, ['Ngữ pháp ' + (q + 1) + '/' + qs.length + ': chọn câu dùng đúng cấu trúc.']));
+      area.appendChild(h('article', { class: 'gcard' }, [h('h3', { lang: 'zh-CN' }, [it.s]), h('p', null, [it.d])]));
+      optRow(area, c, it.ok, it.bad, h('p', { class: 'answer' }, [it.vi]), done);
+    });
+  }
+  function tCloze(c) {
+    var vocab = c.l.vocab.map(function (v) { return v[0]; }).filter(function (w) { return w.length >= 2; }), qs = [], used = {};
+    shuffle(sentences(c.l)).forEach(function (s) {
+      if (qs.length >= 6) return;
+      var cand = vocab.filter(function (w) { return !used[w] && s.zh.indexOf(w) >= 0; });
+      if (!cand.length) return;
+      var w = cand[Math.floor(Math.random() * cand.length)]; used[w] = 1;
+      qs.push({ s: s, w: w });
+    });
+    series(c, qs.length, function (area, q, done) {
+      var it = qs[q], i = it.s.zh.indexOf(it.w);
+      var same = vocab.filter(function (v) { return v !== it.w && v.length === it.w.length && it.s.zh.indexOf(v) < 0; });
+      var wrong = shuffle(same.length >= 3 ? same : vocab.filter(function (v) { return v !== it.w; })).slice(0, 3);
+      area.appendChild(h('p', { class: 'hint' }, ['Câu ' + (q + 1) + '/' + qs.length + ': chọn từ đúng điền vào chỗ trống (câu trong bài khóa).']));
+      var line = h('p', { class: 'target zh cloze', lang: 'zh-CN' }, [it.s.zh.slice(0, i), h('span', { class: 'blank' }, ['＿＿']), it.s.zh.slice(i + it.w.length)]);
+      area.appendChild(line);
+      optRow(area, c, it.w, wrong, hz(it.s.zh, it.s.py, null), function () { done(); });
+    });
+  }
+  function tCompose(c) {
+    var qs = c.l.u.comp;
+    series(c, qs.length, function (area, q, done) {
+      var it = qs[q], finished = false;
+      area.appendChild(h('p', { class: 'hint' }, ['Câu ' + (q + 1) + '/' + qs.length + ': dịch sang tiếng Trung, dùng đúng cấu trúc trong ngoặc. Gõ chữ Hán hoặc nói 🎤.']));
+      area.appendChild(h('p', { class: 'target' }, ['“' + it.vi + '”']));
+      area.appendChild(keyChips(it.keys));
+      var info = h('p', { class: 'mic-status', 'aria-live': 'polite' }, ['']);
+      function judge(text) {
+        if (finished) return;
+        var miss = it.keys.filter(function (k) { return !keyHit(text, k); });
+        if (!miss.length && plainZh(text).length >= 6) { finished = true; info.textContent = 'Đạt! 👏 So với câu mẫu:'; cheer(); end(); }
+        else info.textContent = miss.length ? 'Câu còn thiếu: ' + miss.join('、').replace(/\|/g, '/') : 'Câu hơi ngắn, viết đầy đủ hơn nhé.';
+      }
+      function end() { area.querySelectorAll('button.mic-btn, textarea').forEach(function (b) { b.disabled = true; }); area.appendChild(h('button', { class: 'ex', onclick: function () { say(it.model); } }, [hz(it.model, it.mpy, null)])); c.dock.innerHTML = ''; c.dock.appendChild(btn('Tiếp ▸', done, 'primary')); }
+      var ta = h('textarea', { class: 'typein', rows: '2', lang: 'zh-CN', placeholder: 'Gõ câu bằng chữ Hán…' });
+      area.appendChild(ta);
+      area.appendChild(micBox([it.model], function (best, alts) { judge(alts.join(' ')); }, { tip: 'Hoặc bấm 🎤 nói câu của em.', onNoMic: function () {} }));
+      area.appendChild(info);
+      area.appendChild(h('div', { class: 'row wrap' }, [btn('Chấm câu', function () { judge(ta.value); }, 'primary'), btn('Xem câu mẫu', function () { if (!finished) { finished = true; c.miss(); info.textContent = 'Câu mẫu:'; end(); } }, 'ghost')]));
+    });
+  }
   /* đóng vai: máy đọc vai kia, em nói vai của mình bằng micro */
   function tRole(c) {
     var b = bk(c.l); if (!b) return c.next();
@@ -1152,37 +1274,70 @@
   }
 
   /* ========== Khu phố & công viên ========== */
-  var PLACES = [
-    { key: 'home', label: '我家', sub: 'Nhà em', icon: '🏠', x: -5.2, z: -3.1, w: 2.6, d: 2, h: 2.2, c: '#FCE4C8', roof: '#C0392B', bg: '#E6604E', text: '我家', lessons: [1, 2, 5, 15, 20, 21] },
-    { key: 'school', label: '学校', sub: 'Trường · 4 khoa', icon: '🏫', x: -1.3, z: -3.2, w: 4, d: 2.2, h: 2.8, c: '#F3E3CF', roof: '#D23B2E', bg: '#D23B2E', text: '北京语言大学', lessons: [4, 6, 7, 10, 11, 12, 14, 16, 17, 22, 23, 24], khoa: true },
-    { key: 'bank', label: '银行', sub: 'Ngân hàng', icon: '🏦', x: 2.6, z: -3.1, w: 2.4, d: 2, h: 2.4, c: '#E9EEF3', roof: '#2E4A7A', bg: '#C0392B', text: '中国银行', lessons: [9] },
-    { key: 'post', label: '邮局', sub: 'Bưu điện · phố', icon: '🏤', x: 5.4, z: -3.1, w: 2.2, d: 2, h: 2.1, c: '#DFF3E8', roof: '#1F9D74', bg: '#1F9D74', text: '邮局', lessons: [3, 18] },
-    { key: 'market', label: '水果店', sub: 'Chợ hoa quả', icon: '🍎', x: -5, z: 3, w: 2.6, d: 1.8, h: 1.9, c: '#FFF1C9', roof: '#E6604E', bg: '#F28C28', text: '水果店', lessons: [8], r: Math.PI },
-    { key: 'park', kind: 'park', label: '公园', sub: 'Công viên · ôn bài', icon: '🌳', x: -0.8, z: 3.6, d: 0.5, r: Math.PI, text: '公园' },
-    { key: 'shop', label: '服装店', sub: 'Cửa hàng quần áo', icon: '👗', x: 1.9, z: 3, w: 1.9, d: 1.7, h: 1.9, c: '#F9E1EC', roof: '#B03A78', bg: '#B03A78', text: '服装店', lessons: [19], r: Math.PI },
-    { key: 'airport', label: '机场', sub: 'Sân bay', icon: '✈️', x: 4.7, z: 3, w: 3.2, d: 1.8, h: 1.8, c: '#DDE9F4', roof: '#4E8DE2', bg: '#10233F', text: '机场', lessons: [13], r: Math.PI }
-  ];
-  function lessonByNo(n) { var r = null; C.semesters[0].lessons.forEach(function (l) { if (l.no === n) r = l; }); return r; }
+  /* Khu dân cư học tiếng Trung: một con phố dài, mỗi hàng quán là một bài khóa nâng cao.
+     Bài cơ bản (HK1) không bày ở khu phố nữa, vẫn mở được từ 🗺️ Hành trình. */
+  var SHOPS = {
+    'hk3-l1': { label: '咖啡馆', sub: 'Quán cà phê', icon: '☕', c: '#F6E7D3', roof: '#7A5235' },
+    'hk3-l2': { label: '茶馆', sub: 'Quán trà · cờ', icon: '🍵', c: '#E7F0DC', roof: '#2F7A4B' },
+    'hk3-l3': { label: '汽车行', sub: 'Đại lý ô tô', icon: '🚗', c: '#E3E8EF', roof: '#2E4A7A' },
+    'hk3-l4': { label: '家常菜馆', sub: 'Quán cơm nhà', icon: '🥢', c: '#FCE4C8', roof: '#C0392B' },
+    'hk3-l5': { label: '旅行社', sub: 'Đại lý du lịch', icon: '🧳', c: '#F4E6C8', roof: '#B5643C' },
+    'hk3-l6': { label: '旧书店', sub: 'Tiệm sách cũ', icon: '📚', c: '#EDE3F7', roof: '#6B4E8F' }
+  };
+  var SHOP_COLORS = [['#F6E7D3', '#7A5235'], ['#E7F0DC', '#2F7A4B'], ['#E3E8EF', '#2E4A7A'], ['#FCE4C8', '#C0392B'], ['#EDE3F7', '#6B4E8F'], ['#F9E1EC', '#B03A78']];
+  function advLessons() { var out = []; C.semesters.forEach(function (s) { if (s.id !== 'hk1' && !s.locked) s.lessons.forEach(function (l) { out.push(l); }); }); return out; }
+  var PLACES = [], TOWN = { size: [40, 15], items: [] };
+  function buildTown() {
+    var ls = advLessons(), gap = 3.4, spots = [];
+    PLACES = [];
+    ls.forEach(function (l, i) {
+      var sh = SHOPS[l.id] || l.shop || {}, col = SHOP_COLORS[i % SHOP_COLORS.length];
+      spots.push({ key: 'l:' + l.id, label: sh.label || l.zh, sub: sh.sub || l.vi, icon: sh.icon || '🏮', w: 2.8, d: 2, h: 2.8, c: sh.c || col[0], roof: sh.roof || col[1], bg: sh.roof || col[1], text: sh.label || l.zh, lessons: [l.id] });
+    });
+    /* 学校 (4 khoa) ở giữa phố, công viên ở cuối phố */
+    spots.splice(Math.min(2, spots.length), 0, { key: 'school', label: '大学', sub: 'Trường · 4 khoa', icon: '🏫', w: 3.6, d: 2.2, h: 3.2, c: '#F3E3CF', roof: '#D23B2E', bg: '#D23B2E', text: '北京语言大学', lessons: [], khoa: true });
+    spots.push({ key: 'park', kind: 'park', label: '公园', sub: 'Công viên · ôn bài', icon: '🌳', d: 0.5, text: '公园' });
+    var x0 = -(spots.length - 1) * gap / 2;
+    spots.forEach(function (p, i) { p.x = x0 + i * gap; p.z = -2.9; PLACES.push(p); });
+    var fw = Math.max(20, spots.length * gap + 6), items = [['road', 0, 0, 0, { z: 0.9, d: 2.2 }], ['walk', 0, 0, 0, { z: -1.05, d: 1.5 }], ['walk', 0, 0, 0, { z: 2.75, d: 1.3 }]];
+    /* nhà cao tầng phía sau hàng quán = khu dân cư */
+    for (var x = -fw / 2 + 2; x < fw / 2 - 1; x += 3.6) items.push(['block', x, -6.1, 0, { w: 3.2, h: 4 + ((x * 7) % 3 + 3) % 3, c: ['#E8DCCB', '#DCE3EA', '#F1E4D0'][Math.abs(Math.round(x)) % 3] }]);
+    for (var t = -fw / 2 + 1.6; t < fw / 2; t += 4.2) { items.push(['tree', t, 3.8, 0, { r: 0.6 }]); items.push(['lamp', t + 2.1, 2.3]); }
+    items.push(['post', x0 - 1.8, -1.1, 0, { text: '学汉语街' }]);
+    TOWN = { size: [fw, 15], items: items };
+  }
+  function lessonByNo(n) { if (typeof n === 'string') { var x = findLesson(n); return x ? x.l : null; } var r = null; C.semesters[0].lessons.forEach(function (l) { if (l.no === n) r = l; }); return r; }
   function goTown(first) {
     closeSheet();
     G.room = 'town'; G.cast = [];
-    loadRoom('town', { cast: [], places: PLACES, time: '10:00', meName: state.profile.sur + state.profile.given, pz: 0.3 }, 'Khu phố của em');
+    buildTown();
+    var start = PLACES[Math.min(2, PLACES.length - 1)];
+    loadRoom('town', { cast: [], places: PLACES, items: TOWN.items, size: TOWN.size, time: '10:00', meName: state.profile.sur + state.profile.given, px: G.townX != null ? G.townX : start.x, pz: 0.9 }, 'Khu phố học tiếng Trung');
     refresh();
-    clearChat('🗺️ Khu phố · 北京路');
-    bubble('npc panda', 'panda', null, null, (first ? 'Chào ' + state.profile.nick + '! ' : '') + 'Đây là khu phố của em. Bấm vào tòa nhà nào thì đi tới đó và gặp bài khóa ở nơi ấy. Không có thứ tự bắt buộc, em thích đâu chơi đó.');
-    dockBtns(PLACES.map(function (p) { return btn(p.icon + ' ' + p.sub, function () { onPlace(p.key); }, 'ghost'); }));
+    clearChat('🗺️ Khu phố · 学汉语街');
+    bubble('npc panda', 'panda', null, null, (first ? 'Chào ' + state.profile.nick + '! ' : '') + 'Đây là phố 学汉语街: mỗi hàng quán là một bài khóa nâng cao. Kéo để nhìn quanh, bấm vào quán (hoặc nút bên dưới) để đi tới. Không có thứ tự bắt buộc, em thích đâu chơi đó.');
+    dockBtns(PLACES.map(function (p) { return btn(p.icon + ' ' + p.label + ' · ' + p.sub, function () { if (has3D && World.goPlace) World.goPlace(p.key); else onPlace(p.key); }, 'ghost'); }));
   }
   function onPlace(key) {
     if (key === 'park') return goPark();
     var p = null; PLACES.forEach(function (x) { if (x.key === key) p = x; });
     if (!p) return;
+    G.townX = p.x;
     clearChat(p.icon + ' ' + p.label + ' · ' + p.sub);
-    bubble('npc panda', 'panda', null, null, 'Ở ' + p.sub.toLowerCase() + ' có ' + p.lessons.length + ' bài khóa. Em chọn bài muốn vào nhé.');
+    if (p.lessons.length === 1 && !p.khoa) {
+      var x1 = findLesson(p.lessons[0]), l1 = x1.l;
+      bubble('npc panda', 'panda', null, null, 'Quán ' + p.label + ' (' + p.sub + ') là bài khóa ' + x1.s.label + ' · 第' + l1.no + '课 “' + l1.zh + '” — ' + l1.vi + '.' + (state.story[l1.id] ? ' Em đã học bài này ✓.' : ''));
+      dockBtns([btn('Vào quán học bài ▸', function () { goLesson(l1.id); }, 'primary'), btn('📘 Bài khóa gốc', function () { state.cur = l1.id; openTextbook(l1); }, 'ghost'),
+        btn('🏫 Luyện 4 khoa bài này', function () { state.cur = l1.id; save(); onPlace('school'); }, 'ghost'), btn('🗺️ Về phố', function () { goTown(); }, 'ghost')]);
+      return;
+    }
+    bubble('npc panda', 'panda', null, null, p.khoa ? 'Trường đại học có 4 khoa. Em đang luyện bài 第' + curLesson().l.no + '课 ' + curLesson().l.zh + '; muốn đổi bài thì ghé quán của bài đó.' : 'Ở ' + p.sub.toLowerCase() + ' có ' + p.lessons.length + ' bài khóa. Em chọn bài muốn vào nhé.');
     var list = p.lessons.map(function (n) {
       var l = lessonByNo(n); if (!l) return null;
-      return btn('第' + n + '课 ' + l.zh + (state.story[l.id] ? ' ✓' : ''), function () { goLesson(l.id); }, 'ghost');
+      return btn((typeof n === 'string' ? '🎓 ' + findLesson(n).s.label + ' · ' : '') + '第' + l.no + '课 ' + l.zh + (state.story[l.id] ? ' ✓' : ''), function () { goLesson(l.id); }, 'ghost');
     });
     if (p.khoa) list = list.concat(KHOA.map(function (k) { return btn(k.zh + ' ' + k.name, function () { goKhoa(k); }, 'primary'); }));
+    list.push(btn('🗺️ Về phố', function () { goTown(); }, 'ghost'));
     dockBtns(list);
   }
   function goPark() {
@@ -1198,7 +1353,8 @@
   function parkTalk(key) {
     /* lấy một cặp câu liền nhau trong bài khóa gốc của bài bất kỳ */
     var pairs = [];
-    allLessons().forEach(function (x) { var b = bk(x.l); if (!b) return; b.kw.forEach(function (sec) { var ls = sec.lines.filter(function (ln) { return ln[2]; }); for (var i = 0; i + 1 < ls.length; i++) if (ls[i][0] !== ls[i + 1][0]) pairs.push({ l: x.l, a: ls[i], b: ls[i + 1] }); }); });
+    /* chỉ dùng bài nâng cao: hai câu liền nhau trong cùng bài khóa */
+    advLessons().forEach(function (l) { var ss = sentences(l); for (var i = 0; i + 1 < ss.length; i++) if (ss[i + 1].zh.length <= 40) pairs.push({ l: l, a: ['', ss[i].zh, ss[i].py, ''], b: ['', ss[i + 1].zh, ss[i + 1].py, ''] }); });
     var pr = pairs[Math.floor(Math.random() * pairs.length)];
     var others = shuffle(pairs.filter(function (q) { return q.b[1] !== pr.b[1]; })).slice(0, 2).map(function (q) { return q.b; });
     G.dock.innerHTML = '';
