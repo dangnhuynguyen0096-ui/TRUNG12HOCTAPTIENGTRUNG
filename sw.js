@@ -1,7 +1,7 @@
 /* Lưu game vào máy để chơi offline. Lấy bản mới từ mạng trước, mất mạng mới dùng bản đã lưu,
    nên mỗi lần cập nhật trên GitHub là người chơi thấy ngay. */
-var CACHE = 'lon-len-tieng-trung-v8';
-var FILES = ['./', './index.html', './style.css', './app.js', './world.js', './content-hk1.js', './content-hk1b.js', './content-hk1-book.js', './content-hk1c.js', './content-hk3.js', './content-hk4.js', './strokes-hk1.js', './vendor/three.min.js', './vendor/OrbitControls.js', './vendor/hanzi-writer.min.js', './manifest.webmanifest', './icon.svg'];
+var CACHE = 'lon-len-tieng-trung-v9';
+var FILES = ['./', './index.html', './style.css', './app.js', './world.js', './content-hk1.js', './content-hk1b.js', './content-hk1-book.js', './content-hk1c.js', './content-hk3.js', './content-hk4.js', './content-hk4b.js', './strokes-hk1.js', './vendor/three.min.js', './vendor/OrbitControls.js', './vendor/hanzi-writer.min.js', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) { e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); })); });
 self.addEventListener('fetch', function (e) {
