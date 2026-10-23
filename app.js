@@ -281,6 +281,7 @@
     } catch (e) { has3D = false; world.innerHTML = ''; }
     if (!has3D) world.classList.add('flat');
     goTown(true);
+    if (!has3D) setTimeout(function () { toast(!window.THREE ? 'Chưa tải được thư viện 3D. Tải lại trang (Ctrl+F5) nhé.' : 'Trình duyệt này chưa bật đồ họa 3D (WebGL). Hãy bật "Dùng tăng tốc phần cứng" trong cài đặt Chrome/Edge rồi tải lại.'); }, 600);
   }
   function renderHud() {
     var sem = currentSem(), p = state.profile;
