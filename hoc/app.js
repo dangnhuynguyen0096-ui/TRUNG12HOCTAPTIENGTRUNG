@@ -160,7 +160,7 @@
       h('a', { class: 'btn', href: '#/s/' + sub.id + '/tu-vung' }, ['🃏 Ôn từ vựng hôm nay (' + due + ')'])
     ]));
     sub.lessons.forEach(function (l) {
-      var box = h('details', { class: 'card lesson', open: sub.lessons.length < 3 || null });
+      var box = h('details', { class: 'card lesson', open: true });
       box.appendChild(h('summary', null, [h('b', null, ['Bài ' + l.n]), ' ', h('span', { class: 'zh' }, [l.title || ''])]));
       var ul = h('div', { class: 'texts' });
       l.texts.forEach(function (t) {
