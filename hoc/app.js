@@ -17,7 +17,15 @@
 (function () {
   'use strict';
   var DB = {}, app = document.getElementById('app'), crumb = document.getElementById('crumb');
-  window.HOC = { add: function (s) { DB[s.id] = s; } };
+  window.HOC = { add: function (s) {
+    /* văn mẫu (môn viết): đầu đoạn "^" = căn giữa (标题), ">" = căn phải (落款), "|" = viết sát lề (称呼, 此致…); còn lại lùi đầu dòng hai chữ */
+    s.lessons.forEach(function (l) { l.texts.forEach(function (t) {
+      if (!t.p.some(function (p) { return /^[\^>|]/.test(p); })) return;
+      t.fmt = t.p.map(function (p) { return { '^': 'c', '>': 'r', '|': 'l' }[p.charAt(0)] || ''; });
+      t.p = t.p.map(function (p) { return p.replace(/^[\^>|]/, ''); });
+    }); });
+    DB[s.id] = s;
+  } };
 
   /* ---------- tiện ích ---------- */
   function h(tag, attrs, kids) {
@@ -76,6 +84,20 @@
     var u = new SpeechSynthesisUtterance(text); u.lang = 'zh-CN'; if (zhVoice) u.voice = zhVoice; u.rate = rate || store.get('rate', 0.9);
     if (onend) u.onend = onend;
     speechSynthesis.speak(u);
+  }
+  /* chỉnh tốc độ đọc: dùng chung cho mọi môn, lưu lại trên máy */
+  var RATES = [[0.5, 'Rất chậm'], [0.7, 'Chậm'], [0.9, 'Vừa'], [1, 'Bình thường'], [1.2, 'Nhanh'], [1.5, 'Rất nhanh']];
+  function rateCtl() {
+    var cur = store.get('rate', 0.9);
+    var sel = h('select', { class: 'rate-sel', title: 'Tốc độ giọng đọc' }, RATES.map(function (r) {
+      return h('option', { value: r[0] }, ['🔊 ' + r[1] + ' (' + r[0] + '×)']);
+    }));
+    sel.value = String(cur);
+    sel.addEventListener('change', function () {
+      store.set('rate', +sel.value);
+      document.querySelectorAll('.rate-sel').forEach(function (o) { o.value = sel.value; });
+    });
+    return sel;
   }
   var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   function listen(cb, onerr) {
@@ -219,7 +241,7 @@
   function spoken(s) { return plain(s).replace(/(^|[。！？”\s])[^\s：:，。！？]{1,4}[：:]/g, '$1'); }
   function listenBar(t) {
     return h('div', { class: 'bar' }, [h('button', { class: 'btn', on: { click: function () { speak(spoken(t.p.join('\n'))); } } }, ['🔊 Nghe bài']),
-      h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏹ Dừng'])]);
+      h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏹ Dừng']), rateCtl()]);
   }
   function tabListenText(sub, l, t, body) {
     body.appendChild(h('p', { class: 'tip' }, ['Nghe cả bài 2 lần, không nhìn chữ. Sang tab Bài tập sách làm bài (ở đó cũng có nút nghe), chấm xong mới mở bài khóa ra đối chiếu. Chỉnh tốc độ đọc ở tab Nghe.']));
@@ -251,12 +273,12 @@
         var log = store.get('speed:' + sub.id, []); log.push(sp); store.set('speed:' + sub.id, log.slice(-50)); }
     } } }, ['⏱ Bấm giờ đọc']);
     var res = h('p', { class: 'muted' });
-    var tip = { '精读': 'Đọc kỹ: hiểu từng câu, đoán nghĩa từ mới qua ngữ cảnh.', '通读': 'Đọc thông: đọc liền một mạch, nắm ý chính và quan điểm tác giả.', '略读': 'Đọc lướt: chỉ tìm ý chính từng đoạn, không dừng ở từ khó.', '查读': 'Đọc tra cứu: đọc câu hỏi trước rồi tìm nhanh thông tin.' }[t.kind];
-    body.appendChild(h('div', { class: 'bar' }, [btn, clock, h('button', { class: 'btn ghost', on: { click: function () { speak(plain(t.p.join(''))); } } }, ['🔊 Nghe cả bài']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸'])]));
+    var tip = { '精读': 'Đọc kỹ: hiểu từng câu, đoán nghĩa từ mới qua ngữ cảnh.', '通读': 'Đọc thông: đọc liền một mạch, nắm ý chính và quan điểm tác giả.', '略读': 'Đọc lướt: chỉ tìm ý chính từng đoạn, không dừng ở từ khó.', '查读': 'Đọc tra cứu: đọc câu hỏi trước rồi tìm nhanh thông tin.', '理论': 'Lý thuyết: nắm khái niệm, đặc điểm và bố cục (标题 · 称呼 · 正文 · 落款) trước khi xem văn mẫu.', '范文': 'Văn mẫu: chú ý vị trí từng phần và các câu mở/kết cố định, rồi sang tab Viết để bắt chước.' }[t.kind];
+    body.appendChild(h('div', { class: 'bar' }, [btn, clock, h('button', { class: 'btn ghost', on: { click: function () { speak(plain(t.p.join(''))); } } }, ['🔊 Nghe cả bài']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()]));
     if (tip) body.appendChild(h('p', { class: 'tip' }, [tip]));
     body.appendChild(res);
-    var art = h('article', { class: 'zh reading' });
-    t.p.forEach(function (p, i) { art.appendChild(h('p', { html: '<span class="pn">[' + (i + 1) + ']</span>' + paraHtml(p, t.notes) })); });
+    var art = h('article', { class: 'zh reading' + (t.fmt ? ' fmt' : '') });
+    t.p.forEach(function (p, i) { art.appendChild(t.fmt ? h('p', { class: t.fmt[i], html: paraHtml(p, t.notes) }) : h('p', { html: '<span class="pn">[' + (i + 1) + ']</span>' + paraHtml(p, t.notes) })); });
     if (t.src) art.appendChild(h('p', { class: 'src' }, [t.src]));
     bindGloss(art); body.appendChild(art);
     if (t.notes && t.notes.length) {
@@ -445,10 +467,8 @@
   /* ---------- nghe: chính tả từng câu ---------- */
   function tabListen(sub, l, t, body) {
     var ss = sentences(t), i = 0;
-    var rate = h('input', { type: 'range', min: 0.5, max: 1.2, step: 0.1, value: store.get('rate', 0.9) });
-    rate.addEventListener('change', function () { store.set('rate', +rate.value); });
     body.appendChild(h('p', { class: 'tip' }, ['Nghe từng câu (không nhìn chữ), gõ lại bằng bàn phím tiếng Trung rồi kiểm tra. Chữ bạn bỏ sót hoặc viết sai sẽ được tô đỏ.']));
-    body.appendChild(h('div', { class: 'bar' }, ['Tốc độ đọc ', rate]));
+    body.appendChild(h('div', { class: 'bar' }, ['Tốc độ đọc ', rateCtl()]));
     var stage = h('div', { class: 'card' }); body.appendChild(stage);
     var total = 0, got = 0;
     function show() {
@@ -456,7 +476,7 @@
       if (i >= ss.length) { stage.appendChild(h('p', null, ['Xong! Độ chính xác: ' + (total ? Math.round(got / total * 100) : 0) + '%'])); return; }
       var s = ss[i], ta = h('textarea', { class: 'zh', rows: 2, placeholder: 'Gõ câu vừa nghe…' }), res = h('p', { class: 'zh reading small' });
       stage.appendChild(h('p', { class: 'muted' }, ['Câu ' + (i + 1) + '/' + ss.length]));
-      stage.appendChild(h('div', { class: 'bar' }, [h('button', { class: 'btn', on: { click: function () { speak(s, +rate.value); } } }, ['🔊 Nghe']), h('button', { class: 'btn ghost', on: { click: function () { speak(s, 0.6); } } }, ['🐢 Chậm'])]));
+      stage.appendChild(h('div', { class: 'bar' }, [h('button', { class: 'btn', on: { click: function () { speak(s); } } }, ['🔊 Nghe']), h('button', { class: 'btn ghost', on: { click: function () { speak(s, Math.min(0.6, store.get('rate', 0.9))); } } }, ['🐢 Chậm'])]));
       stage.appendChild(ta); stage.appendChild(res);
       var chk = h('button', { class: 'btn', on: { click: function () {
         var ref = han(s), sc = lcs(ref, han(ta.value)); total += ref.length; got += sc;
@@ -464,7 +484,7 @@
       } } }, ['Kiểm tra']);
       var nx = h('button', { class: 'btn', hidden: true, on: { click: function () { i++; show(); } } }, ['Câu tiếp ›']);
       stage.appendChild(h('div', { class: 'bar' }, [chk, nx, h('button', { class: 'btn ghost', on: { click: function () { i++; show(); } } }, ['Bỏ qua'])]));
-      speak(s, +rate.value);
+      speak(s);
     }
     show();
   }
