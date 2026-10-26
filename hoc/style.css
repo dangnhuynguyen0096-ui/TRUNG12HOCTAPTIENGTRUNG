@@ -86,3 +86,5 @@ mark { background: var(--red-soft); color: var(--red); font-weight: 700; }
 .pager { display: flex; justify-content: space-between; gap: 8px; margin: 20px 0; }
 .pager .btn { font-family: 'Noto Sans SC', sans-serif; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 520px) { main { padding: 12px; } h1 { font-size: 1.3rem; } }
+.ref { white-space: pre-line; }
+.reading.pre p { white-space: pre-line; }
