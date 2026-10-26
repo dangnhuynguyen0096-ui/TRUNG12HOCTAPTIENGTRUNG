@@ -11,7 +11,8 @@
      fill   items:[[câu có ___ , đáp án (chuỗi, nhiều đáp án ngăn bằng |)]]
      match  items:[[vế trái, vế phải]]
      order  items:[[vế 1, vế 2, ...]]   (đúng thứ tự, app tự xáo)
-     open   items:[[câu hỏi, gợi ý đáp án]]
+     open   items:[[câu hỏi, gợi ý đáp án, (câu cho máy đọc)]]
+   Môn nghe (listen: true): p là bài khóa, ẩn đến khi người học bấm hiện; ex.audio là đoạn máy đọc riêng cho một bài tập.
    Mọi phần chấm đều chạy trong máy; phần viết tự do thì có nút sao chép lệnh để nhờ AI chấm. */
 (function () {
   'use strict';
@@ -40,7 +41,7 @@
   function sentences(t) {
     var out = [];
     t.p.forEach(function (p) {
-      (plain(p).match(/[^。！？；]+[。！？；」”]*/g) || []).forEach(function (s) { s = s.trim(); if (s.replace(/[^\u4e00-\u9fff]/g, '').length >= 6) out.push(s); });
+      (spoken(p).match(/[^。！？；\n]+[。！？；」”]*/g) || []).forEach(function (s) { s = s.trim(); if (s.replace(/[^\u4e00-\u9fff]/g, '').length >= 6) out.push(s); });
     });
     return out;
   }
@@ -184,7 +185,7 @@
       t.words || t.time ? h('span', { class: 'muted' }, [(t.words ? 'khoảng ' + t.words + ' chữ' : '') + (t.words && t.time ? ' · ' : '') + (t.time ? 'thời gian tham khảo ' + t.time + ' phút' : '')]) : null
     ]));
     var nav = h('nav', { class: 'tabs' });
-    TABS.forEach(function (x) { nav.appendChild(h('a', { href: '#/s/' + sub.id + '/' + t.id + '/' + x[0], class: x[0] === tab ? 'on' : '' }, [x[1]])); });
+    TABS.forEach(function (x) { nav.appendChild(h('a', { href: '#/s/' + sub.id + '/' + t.id + '/' + x[0], class: x[0] === tab ? 'on' : '' }, [sub.listen && x[0] === 'doc' ? '🎧 Bài nghe' : x[1]])); });
     app.appendChild(nav);
     var body = h('div', { class: 'tabbody' }); app.appendChild(body);
     ({ doc: tabRead, bt: tabBook, tu: tabWords, nghe: tabListen, noi: tabSpeak, cau: tabSentence, nc: tabAdvanced, viet: tabWrite }[tab] || tabRead)(sub, l, t, body);
@@ -214,7 +215,33 @@
     });
   }
 
+  /* bỏ tên người nói ("男：", "A：") trước khi máy đọc */
+  function spoken(s) { return plain(s).replace(/(^|[。！？”\s])[^\s：:，。！？]{1,4}[：:]/g, '$1'); }
+  function listenBar(t) {
+    return h('div', { class: 'bar' }, [h('button', { class: 'btn', on: { click: function () { speak(spoken(t.p.join('\n'))); } } }, ['🔊 Nghe bài']),
+      h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏹ Dừng'])]);
+  }
+  function tabListenText(sub, l, t, body) {
+    body.appendChild(h('p', { class: 'tip' }, ['Nghe cả bài 2 lần, không nhìn chữ. Sang tab Bài tập sách làm bài (ở đó cũng có nút nghe), chấm xong mới mở bài khóa ra đối chiếu. Chỉnh tốc độ đọc ở tab Nghe.']));
+    body.appendChild(listenBar(t));
+    var art = h('article', { class: 'zh reading pre', hidden: true });
+    t.p.forEach(function (p, i) {
+      var pp = h('p', { html: '<span class="pn">[' + (i + 1) + ']</span>' + paraHtml(p, t.notes) });
+      pp.insertBefore(h('button', { class: 'btn ghost sm', on: { click: function () { speak(spoken(p)); } } }, ['🔊']), pp.firstChild);
+      art.appendChild(pp);
+    });
+    if (t.src) art.appendChild(h('p', { class: 'src' }, [t.src]));
+    bindGloss(art);
+    body.appendChild(h('button', { class: 'btn ghost', on: { click: function () { art.hidden = !art.hidden; this.textContent = art.hidden ? '👁 Hiện bài khóa' : '🙈 Ẩn bài khóa'; } } }, ['👁 Hiện bài khóa']));
+    body.appendChild(art);
+    if (t.notes && t.notes.length) {
+      var nl = h('dl', { class: 'notes' });
+      t.notes.forEach(function (n) { nl.appendChild(h('dt', { class: 'zh' }, [n[0]])); nl.appendChild(h('dd', null, [n[1] + ' · ' + n[2]])); });
+      body.appendChild(h('details', { class: 'card' }, [h('summary', null, ['Từ mới (' + t.notes.length + ')']), nl]));
+    }
+  }
   function tabRead(sub, l, t, body) {
+    if (sub.listen) return tabListenText(sub, l, t, body);
     var timer = null, start = 0, chars = t.p.join('').replace(/[^\u4e00-\u9fff]/g, '').length;
     var clock = h('span', { class: 'clock' }, ['0:00']);
     var btn = h('button', { class: 'btn', on: { click: function () {
@@ -243,8 +270,10 @@
   function tabBook(sub, l, t, body) {
     if (!t.ex || !t.ex.length) { body.appendChild(h('p', { class: 'card' }, ['Văn bản này không có bài tập trong sách. Hãy sang tab Câu & đoạn hoặc Nâng cao.'])); return; }
     var graders = [];
+    if (sub.listen) body.appendChild(listenBar(t));
     t.ex.forEach(function (ex, i) {
       var card = h('section', { class: 'card ex' }, [h('h3', { class: 'zh' }, [(['一', '二', '三', '四', '五', '六', '七', '八'][i] || i + 1) + '、' + (ex.q || '')])]);
+      if (ex.audio) card.appendChild(h('button', { class: 'btn ghost sm', on: { click: function () { speak(spoken(ex.audio)); } } }, ['🔊 Nghe phần này']));
       var g = (EX[ex.t] || EX.open)(ex, card, t);
       if (g) graders.push(g);
       body.appendChild(card);
@@ -337,10 +366,10 @@
       ex.items.forEach(function (it, k) {
         var ta = h('textarea', { class: 'zh', rows: 3, placeholder: 'Trả lời bằng tiếng Trung…' });
         var key = 'open:' + t.id + ':' + k + ':' + it[0].slice(0, 8); ta.value = store.get(key, ''); ta.addEventListener('input', function () { store.set(key, ta.value); });
-        var ref = h('p', { class: 'zh ref', hidden: true }, ['Gợi ý: ' + (it[1] || '(tự đối chiếu với đoạn văn)')]);
+        var ref = h('p', { class: 'zh ref', hidden: true }, [(it[2] ? 'Câu nghe: ' + it[2] + '\n' : '') + 'Gợi ý: ' + (it[1] || '(tự đối chiếu với đoạn văn)')]);
         var b2 = h('button', { class: 'btn ghost sm' }, ['🤖 Chép lệnh nhờ AI chấm']);
         b2.addEventListener('click', function () { copy(aiPrompt('Trả lời câu hỏi đọc hiểu: ' + it[0], ta.value, t, it[1]), b2); });
-        card.appendChild(h('div', { class: 'q' }, [h('p', { class: 'zh' }, [(ex.items.length > 1 ? k + 1 + '. ' : '') + it[0]]), ta,
+        card.appendChild(h('div', { class: 'q' }, [h('p', { class: 'zh' }, [(ex.items.length > 1 ? k + 1 + '. ' : '') + it[0]]), it[2] ? h('button', { class: 'btn ghost sm', on: { click: function () { speak(spoken(it[2])); } } }, ['🔊 Nghe']) : null, ta,
           h('div', { class: 'bar' }, [h('button', { class: 'btn ghost sm', on: { click: function () { ref.hidden = !ref.hidden; } } }, ['Xem gợi ý']), b2]), ref]));
       });
       return null;
