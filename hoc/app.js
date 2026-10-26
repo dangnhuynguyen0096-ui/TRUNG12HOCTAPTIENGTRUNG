@@ -273,7 +273,7 @@
         var log = store.get('speed:' + sub.id, []); log.push(sp); store.set('speed:' + sub.id, log.slice(-50)); }
     } } }, ['⏱ Bấm giờ đọc']);
     var res = h('p', { class: 'muted' });
-    var tip = { '精读': 'Đọc kỹ: hiểu từng câu, đoán nghĩa từ mới qua ngữ cảnh.', '通读': 'Đọc thông: đọc liền một mạch, nắm ý chính và quan điểm tác giả.', '略读': 'Đọc lướt: chỉ tìm ý chính từng đoạn, không dừng ở từ khó.', '查读': 'Đọc tra cứu: đọc câu hỏi trước rồi tìm nhanh thông tin.', '理论': 'Lý thuyết: nắm khái niệm, đặc điểm và bố cục (标题 · 称呼 · 正文 · 落款) trước khi xem văn mẫu.', '范文': 'Văn mẫu: chú ý vị trí từng phần và các câu mở/kết cố định, rồi sang tab Viết để bắt chước.' }[t.kind];
+    var tip = { '精读': 'Đọc kỹ: hiểu từng câu, đoán nghĩa từ mới qua ngữ cảnh.', '通读': 'Đọc thông: đọc liền một mạch, nắm ý chính và quan điểm tác giả.', '略读': 'Đọc lướt: chỉ tìm ý chính từng đoạn, không dừng ở từ khó.', '查读': 'Đọc tra cứu: đọc câu hỏi trước rồi tìm nhanh thông tin.', '理论': 'Lý thuyết: nắm khái niệm, đặc điểm và bố cục (标题 · 称呼 · 正文 · 落款) trước khi xem văn mẫu.', '范文': 'Văn mẫu: chú ý vị trí từng phần và các câu mở/kết cố định, rồi sang tab Viết để bắt chước.', '内容链接': 'Bài đọc thêm: lấy ý và số liệu ở đây làm dẫn chứng khi thảo luận.' }[t.kind] || (/^课文[一二三]$/.test(t.kind) && sub.id === 'ky3' ? 'Khẩu ngữ: đọc to bài khóa, học các mẫu câu 表达方式 ở tab Nâng cao, rồi luyện nói ở tab Nói.' : '');
     body.appendChild(h('div', { class: 'bar' }, [btn, clock, h('button', { class: 'btn ghost', on: { click: function () { speak(plain(t.p.join(''))); } } }, ['🔊 Nghe cả bài']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()]));
     if (tip) body.appendChild(h('p', { class: 'tip' }, [tip]));
     body.appendChild(res);
@@ -314,7 +314,7 @@
   function mark(el, ok) { el.classList.remove('right', 'wrong'); el.classList.add(ok ? 'right' : 'wrong'); }
   function articleWithBlanks(t, mk, ex) {
     var art = h('div', { class: 'zh reading small' });
-    if (ex.text) { art.appendChild(h('p', { html: paraHtml(ex.text, null, mk) })); return art; }
+    if (ex.text) { ex.text.split('\n').forEach(function (line) { art.appendChild(h('p', { html: paraHtml(line, null, mk) })); }); return art; }
     t.p.forEach(function (p, i) { if (/\{\d+\}/.test(p)) art.appendChild(h('p', { html: '<span class="pn">[' + (i + 1) + ']</span>' + paraHtml(p, null, mk) })); });
     return art;
   }
