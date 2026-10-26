@@ -1,5 +1,5 @@
 /* Lưu app để học offline. Lấy bản mới từ mạng trước, mất mạng mới dùng bản đã lưu. */
-var CACHE = 'hoc-theo-mon-v2';
+var CACHE = 'hoc-theo-mon-v3';
 var FILES = ['./', './index.html', './style.css', './app.js', './data/index.js', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) { e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf('hoc-theo-mon') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); })); });
