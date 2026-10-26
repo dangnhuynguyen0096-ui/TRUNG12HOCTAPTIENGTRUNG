@@ -1,6 +1,6 @@
-/* Môn Khẩu ngữ 3 — 发展汉语·高级听力(I)，么书君 编著 (Bắc Ngữ, 2011). Bài 1–30.
+/* Môn Nghe 3 — 发展汉语·高级听力(I)，么书君 编著 (Bắc Ngữ, 2011). Bài 1–30.
    Bài khóa và đáp án lấy từ sách 文本与答案; câu hỏi mở (说一说) chỉ có gợi ý tham khảo. */
-HOC.add({ id: 'kn3', name: 'Khẩu ngữ 3', book: '发展汉语 · 高级听力 (I)', listen: true, lessons: [
+HOC.add({ id: 'kn3', name: 'Nghe 3', book: '发展汉语 · 高级听力 (I)', listen: true, lessons: [
 { n: 1, title: '珍惜现在', texts: [
 { id: '1', title: '珍惜现在', kind: '课文',
   p: [
