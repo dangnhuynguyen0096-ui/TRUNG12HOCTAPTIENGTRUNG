@@ -165,13 +165,22 @@
       h('h1', null, ['Chọn môn học']),
       h('p', null, ['Mỗi môn đi theo đúng sách: bài tập trong sách app tự chấm, kèm luyện nghe, nói, ghép câu, phân tích câu và viết.'])
     ]));
-    var g = h('div', { class: 'grid' });
-    SUBJECTS.forEach(function (s) {
-      g.appendChild(h('a', { class: 'card subj', href: '#/s/' + s.id }, [
-        h('div', { class: 'big zh' }, [s.skill]), h('h2', null, [s.name]), h('p', { class: 'zh muted' }, [s.book])
-      ]));
-    });
-    app.appendChild(g);
+    function grid(list) {
+      var g = h('div', { class: 'grid' });
+      list.forEach(function (s) {
+        g.appendChild(h('a', { class: 'card subj', href: '#/s/' + s.id }, [
+          h('div', { class: 'big zh' }, [s.skill]), h('h2', null, [s.name]), h('p', { class: 'zh muted' }, [s.book])
+        ]));
+      });
+      return g;
+    }
+    app.appendChild(grid(SUBJECTS.filter(function (s) { return !s.nc; })));
+    var adv = SUBJECTS.filter(function (s) { return s.nc; });
+    if (adv.length) {
+      app.appendChild(h('h2', { class: 'sec' }, ['🌟 Môn nâng cao']));
+      app.appendChild(h('p', { class: 'muted' }, ['Đọc mở rộng ngoài chương trình: văn hay, nhiều từ mới, dùng để nâng vốn từ và luyện nói, viết.']));
+      app.appendChild(grid(adv));
+    }
   }
 
   function subjectView(sub) {
@@ -273,7 +282,7 @@
         var log = store.get('speed:' + sub.id, []); log.push(sp); store.set('speed:' + sub.id, log.slice(-50)); }
     } } }, ['⏱ Bấm giờ đọc']);
     var res = h('p', { class: 'muted' });
-    var tip = { '精读': 'Đọc kỹ: hiểu từng câu, đoán nghĩa từ mới qua ngữ cảnh.', '通读': 'Đọc thông: đọc liền một mạch, nắm ý chính và quan điểm tác giả.', '略读': 'Đọc lướt: chỉ tìm ý chính từng đoạn, không dừng ở từ khó.', '查读': 'Đọc tra cứu: đọc câu hỏi trước rồi tìm nhanh thông tin.', '理论': 'Lý thuyết: nắm khái niệm, đặc điểm và bố cục (标题 · 称呼 · 正文 · 落款) trước khi xem văn mẫu.', '范文': 'Văn mẫu: chú ý vị trí từng phần và các câu mở/kết cố định, rồi sang tab Viết để bắt chước.', '内容链接': 'Bài đọc thêm: lấy ý và số liệu ở đây làm dẫn chứng khi thảo luận.' }[t.kind] || (/^课文[一二三]$/.test(t.kind) && sub.id === 'ky3' ? 'Khẩu ngữ: đọc to bài khóa, học các mẫu câu 表达方式 ở tab Nâng cao, rồi luyện nói ở tab Nói.' : '');
+    var tip = { '精读': 'Đọc kỹ: hiểu từng câu, đoán nghĩa từ mới qua ngữ cảnh.', '通读': 'Đọc thông: đọc liền một mạch, nắm ý chính và quan điểm tác giả.', '略读': 'Đọc lướt: chỉ tìm ý chính từng đoạn, không dừng ở từ khó.', '查读': 'Đọc tra cứu: đọc câu hỏi trước rồi tìm nhanh thông tin.', '理论': 'Lý thuyết: nắm khái niệm, đặc điểm và bố cục (标题 · 称呼 · 正文 · 落款) trước khi xem văn mẫu.', '范文': 'Văn mẫu: chú ý vị trí từng phần và các câu mở/kết cố định, rồi sang tab Viết để bắt chước.', '内容链接': 'Bài đọc thêm: lấy ý và số liệu ở đây làm dẫn chứng khi thảo luận.', '游记': 'Du ký: văn giàu hình ảnh và thành ngữ. Đọc lướt lấy thông tin (năm, số liệu, địa danh) trước, rồi đọc lại để học cách miêu tả.', '专题': 'Chuyên đề: mỗi đoạn một địa danh, chú ý câu mở đầu đoạn và các từ đánh giá.' }[t.kind] || (/^课文[一二三]$/.test(t.kind) && sub.id === 'ky3' ? 'Khẩu ngữ: đọc to bài khóa, học các mẫu câu 表达方式 ở tab Nâng cao, rồi luyện nói ở tab Nói.' : '');
     body.appendChild(h('div', { class: 'bar' }, [btn, clock, h('button', { class: 'btn ghost', on: { click: function () { speak(plain(t.p.join(''))); } } }, ['🔊 Nghe cả bài']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()]));
     if (tip) body.appendChild(h('p', { class: 'tip' }, [tip]));
     body.appendChild(res);
