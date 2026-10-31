@@ -48,6 +48,7 @@
   function plain(s) { return s.replace(/\{\d+\}/g, '……'); }
   function sentences(t) {
     var out = [];
+    if (t.zh) return t.zh.map(function (s) { return spoken(s).trim(); });
     t.p.forEach(function (p) {
       (spoken(p).match(/[^。！？；\n]+[。！？；」”]*/g) || []).forEach(function (s) { s = s.trim(); if (s.replace(/[^\u4e00-\u9fff]/g, '').length >= 6) out.push(s); });
     });
@@ -283,7 +284,8 @@
     } } }, ['⏱ Bấm giờ đọc']);
     var res = h('p', { class: 'muted' });
     var tip = { '精读': 'Đọc kỹ: hiểu từng câu, đoán nghĩa từ mới qua ngữ cảnh.', '通读': 'Đọc thông: đọc liền một mạch, nắm ý chính và quan điểm tác giả.', '略读': 'Đọc lướt: chỉ tìm ý chính từng đoạn, không dừng ở từ khó.', '查读': 'Đọc tra cứu: đọc câu hỏi trước rồi tìm nhanh thông tin.', '理论': 'Lý thuyết: nắm khái niệm, đặc điểm và bố cục (标题 · 称呼 · 正文 · 落款) trước khi xem văn mẫu.', '范文': 'Văn mẫu: chú ý vị trí từng phần và các câu mở/kết cố định, rồi sang tab Viết để bắt chước.', '内容链接': 'Bài đọc thêm: lấy ý và số liệu ở đây làm dẫn chứng khi thảo luận.', '游记': 'Du ký: văn giàu hình ảnh và thành ngữ. Đọc lướt lấy thông tin (năm, số liệu, địa danh) trước, rồi đọc lại để học cách miêu tả.', '专题': 'Chuyên đề: mỗi đoạn một địa danh, chú ý câu mở đầu đoạn và các từ đánh giá.' }[t.kind] || (/^课文[一二三]$/.test(t.kind) && sub.id === 'ky3' ? 'Khẩu ngữ: đọc to bài khóa, học các mẫu câu 表达方式 ở tab Nâng cao, rồi luyện nói ở tab Nói.' : '');
-    body.appendChild(h('div', { class: 'bar' }, [btn, clock, h('button', { class: 'btn ghost', on: { click: function () { speak(plain(t.p.join(''))); } } }, ['🔊 Nghe cả bài']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()]));
+    if (!t.zh) body.appendChild(h('div', { class: 'bar' }, [btn, clock, h('button', { class: 'btn ghost', on: { click: function () { speak(plain(t.p.join(''))); } } }, ['🔊 Nghe cả bài']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()]));
+    if (t.zh) return tabGrammar(sub, l, t, body);
     if (tip) body.appendChild(h('p', { class: 'tip' }, [tip]));
     body.appendChild(res);
     var art = h('article', { class: 'zh reading' + (t.fmt ? ' fmt' : '') });
@@ -294,6 +296,23 @@
       var nl = h('dl', { class: 'notes' });
       t.notes.forEach(function (n) { nl.appendChild(h('dt', { class: 'zh' }, [n[0]])); nl.appendChild(h('dd', null, [n[1] + ' · ' + n[2]])); });
       body.appendChild(h('details', { class: 'card' }, [h('summary', null, ['Chú thích từ (' + t.notes.length + ')']), nl]));
+    }
+  }
+
+  /* môn ngữ pháp: phần lý thuyết bằng tiếng Việt (đoạn bắt đầu bằng "## " là tiêu đề), câu ví dụ tiếng Trung ở t.zh */
+  function tabGrammar(sub, l, t, body) {
+    body.appendChild(h('p', { class: 'tip' }, ['Ngữ pháp: đọc phần kiến thức, chạm vào thuật ngữ gạch chân để xem nghĩa, nghe và đọc to các câu ví dụ, rồi sang tab Bài tập làm từ cơ bản đến nâng cao.']));
+    var art = h('article', { class: 'reading gram' });
+    t.p.forEach(function (p) { art.appendChild(/^## /.test(p) ? h('h3', { class: 'zh' }, [p.slice(3)]) : h('p', { class: 'zh', html: paraHtml(p, t.notes) })); });
+    if (t.src) art.appendChild(h('p', { class: 'src' }, [t.src]));
+    bindGloss(art); body.appendChild(art);
+    var ex = h('section', { class: 'card' }, [h('h3', null, ['例句 · Câu ví dụ']), h('div', { class: 'bar' }, [h('button', { class: 'btn ghost', on: { click: function () { speak(t.zh.join('')); } } }, ['🔊 Nghe tất cả']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()])]);
+    t.zh.forEach(function (z, i) { ex.appendChild(h('p', { class: 'zh' }, [h('button', { class: 'btn ghost sm', on: { click: function () { speak(spoken(z)); } } }, ['🔊']), ' ' + (i + 1) + '. ' + z])); });
+    body.appendChild(ex);
+    if (t.notes && t.notes.length) {
+      var nl = h('dl', { class: 'notes' });
+      t.notes.forEach(function (n) { nl.appendChild(h('dt', { class: 'zh' }, [n[0]])); nl.appendChild(h('dd', null, [n[1] + ' · ' + n[2]])); });
+      body.appendChild(h('details', { class: 'card', open: true }, [h('summary', null, ['Thuật ngữ & từ vựng (' + t.notes.length + ')']), nl]));
     }
   }
 
@@ -534,7 +553,7 @@
     });
     c1.appendChild(h('button', { class: 'btn', on: { click: function () { checks.forEach(function (c) { mark(c[0], c[1]()); }); } } }, ['Kiểm tra']));
     body.appendChild(c1);
-    if (t.p.length >= 3 && t.p.length <= 9) {
+    if (!t.zh && t.p.length >= 3 && t.p.length <= 9) {
       var c2 = h('section', { class: 'card' }, [h('h3', null, ['2. Sắp xếp đoạn văn']), h('p', { class: 'muted' }, ['Mỗi mảnh là câu mở đầu của một đoạn. Xếp lại cho đúng mạch bài.'])]);
       var heads = t.p.map(function (p) { var s = plain(p).match(/^[^。！？]+[。！？]?/); return (s ? s[0] : plain(p)).slice(0, 60); });
       var box = h('div', { class: 'q stack' }); c2.appendChild(box); var o = orderWidget(heads, box, ' / ');
