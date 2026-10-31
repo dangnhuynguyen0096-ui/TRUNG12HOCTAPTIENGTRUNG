@@ -95,3 +95,5 @@ mark { background: var(--red-soft); color: var(--red); font-weight: 700; }
 .reading.fmt p.l { text-indent: 0; }
 .rate-sel { font: inherit; font-size: .9em; padding: 6px 8px; border: 1px solid var(--line, #ccc); border-radius: 8px; background: #fff; color: #222; }
 h2.sec { margin: 1.4em 0 .2em; }
+.gram h3{margin:1.2em 0 .4em;font-size:1.05em;color:var(--accent,#b0413e)}
+.gram p{line-height:1.75}
