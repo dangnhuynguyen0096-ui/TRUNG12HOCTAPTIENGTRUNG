@@ -1,5 +1,6 @@
 /* Danh sách môn. Mỗi môn là 1 file data/<id>.js gọi HOC.add({...}). Thêm môn mới chỉ cần thêm 1 dòng ở đây. */
 var SUBJECTS = [
+  { id: 'dnh', name: 'Đất nước học Trung Quốc', book: '中国概况', skill: '国情' },
   { id: 'doc2', name: 'Đọc 2', book: '汉语阅读教程 第一册', skill: '阅读' },
   { id: 'doc3', name: 'Đọc 3', book: '发展汉语 · 高级阅读 (I)', skill: '阅读' },
   { id: 'kn3', name: 'Nghe 3', book: '发展汉语 · 高级听力 (I)', skill: '听说' },
