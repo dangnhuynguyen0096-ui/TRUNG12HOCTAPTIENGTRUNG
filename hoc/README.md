@@ -10,4 +10,4 @@ Thêm môn mới: tạo `data/<id>.js` gọi `HOC.add({...})` và thêm một d�
 Tiến độ học lưu trong trình duyệt (localStorage) của từng máy.
 
 Sách đọc (môn có `read: true`): chỉ có tab Đọc và Từ vựng; từ khó gạch chân (`notes`), câu khó tô nền (`hard: [[câu, giải thích, dịch]]`), ô từ vựng nằm cạnh bài (điện thoại: nút 📒).
-Sách còn bản quyền thì không để trong repo: giữ file dữ liệu riêng và thêm vào lúc dựng bản offline, ví dụ `python3 hoc/tools/build_offline.py ra.html duong/dan/fj.js`.
+Muốn giữ một sách chỉ ở bản trên máy (không lên repo), để file dữ liệu ở ngoài và thêm vào lúc dựng bản offline: `python3 hoc/tools/build_offline.py ra.html duong/dan/sach.js`.

@@ -8,5 +8,6 @@ var SUBJECTS = [
   { id: 'ky3', name: 'Khẩu ngữ 3', book: '发展汉语 · 高级口语 (I)', skill: '口语' },
   { id: 'vhtq', name: 'Văn học Trung Quốc', book: '中国文学史', skill: '文学' },
   { id: 'ngp', name: 'Giáo trình ngữ pháp Hán ngữ hiện đại', book: '汉语语法教程', skill: '语法' },
-  { id: 'dkq', name: 'Đi khắp Trung Quốc', book: '图说天下 · 走遍中国', skill: '游记', nc: true }
+  { id: 'dkq', name: 'Đi khắp Trung Quốc', book: '图说天下 · 走遍中国', skill: '游记', nc: true },
+  { id: 'fj', name: 'Căn phòng riêng', book: '一间只属于自己的房间 · 伍尔夫', skill: '读物', nc: true, read: true }
 ];
