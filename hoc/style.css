@@ -100,3 +100,24 @@ h2.sec { margin: 1.4em 0 .2em; }
 .vi-lec summary { cursor: pointer; font-weight: 700; color: var(--red); }
 .vi-lec h4 { margin: 14px 0 4px; font-size: 1rem; color: var(--red); }
 .vi-lec p { margin: 4px 0; }
+/* sách đọc: câu khó */
+.hs { background: color-mix(in srgb, var(--gold) 16%, transparent); border-radius: 4px; cursor: pointer; padding: 1px 0; }
+.hs sup { color: var(--red); font-size: .7em; margin-right: 1px; }
+.hs-box { border-left: 3px solid var(--gold); background: var(--blank); border-radius: 0 8px 8px 0; padding: 6px 12px; margin: 8px 0; font-family: 'Be Vietnam Pro', sans-serif; font-size: .95rem; text-indent: 0; }
+.hs-box p { margin: 3px 0; }
+.hs-box .zh { font-family: inherit; }
+/* sách đọc: từ vựng ngay cạnh bài */
+main.wide { max-width: 1180px; }
+.rd-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.rd-side { position: sticky; top: 56px; max-height: calc(100vh - 72px); overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.rd-side h3 { margin: 0 0 6px; font-size: 1rem; color: var(--red); }
+.rd-side .notes { grid-template-columns: auto 1fr; font-size: .92rem; }
+.rd-side .on { background: var(--blank); border-radius: 4px; }
+.rd-fab, .rd-close { display: none; }
+@media (max-width: 900px) {
+  .rd-wrap { display: block; }
+  .rd-side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 55vh; border-radius: 14px 14px 0 0; z-index: 20; transform: translateY(105%); transition: transform .2s; box-shadow: 0 -4px 18px rgba(0,0,0,.18); }
+  body.rd-open .rd-side { transform: none; }
+  .rd-fab { display: block; position: fixed; right: 16px; bottom: 18px; z-index: 19; border-radius: 50%; width: 52px; height: 52px; font-size: 1.4rem; padding: 0; box-shadow: 0 3px 10px rgba(0,0,0,.25); }
+  .rd-close { display: inline-block; position: absolute; top: 8px; right: 10px; }
+}
