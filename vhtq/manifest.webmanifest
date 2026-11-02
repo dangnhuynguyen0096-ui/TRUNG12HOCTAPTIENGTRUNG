@@ -1,0 +1,3 @@
+{ "name": "Văn học Trung Quốc", "short_name": "Văn học TQ", "start_url": "./index.html", "scope": "./", "display": "standalone",
+  "background_color": "#F7F3EC", "theme_color": "#B5332A", "lang": "vi",
+  "icons": [ { "src": "../hoc/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" } ] }

@@ -97,3 +97,6 @@ mark { background: var(--red-soft); color: var(--red); font-weight: 700; }
 h2.sec { margin: 1.4em 0 .2em; }
 .gram h3{margin:1.2em 0 .4em;font-size:1.05em;color:var(--accent,#b0413e)}
 .gram p{line-height:1.75}
+.vi-lec summary { cursor: pointer; font-weight: 700; color: var(--red); }
+.vi-lec h4 { margin: 14px 0 4px; font-size: 1rem; color: var(--red); }
+.vi-lec p { margin: 4px 0; }
