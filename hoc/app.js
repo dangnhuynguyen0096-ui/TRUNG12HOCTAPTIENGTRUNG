@@ -147,6 +147,7 @@
   /* ---------- màn hình ---------- */
   function route() {
     if (window.speechSynthesis) speechSynthesis.cancel();
+    app.classList.remove('wide');
     var parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
     window.scrollTo(0, 0);
     if (!parts[0]) return home();
@@ -194,30 +195,31 @@
     ]));
     sub.lessons.forEach(function (l) {
       var box = h('details', { class: 'card lesson', open: true });
-      box.appendChild(h('summary', null, [h('b', null, ['Bài ' + l.n]), ' ', h('span', { class: 'zh' }, [l.title || ''])]));
+      box.appendChild(h('summary', null, [h('b', null, [(sub.read ? 'Chương ' : 'Bài ') + l.n]), ' ', h('span', { class: 'zh' }, [l.title || ''])]));
       var ul = h('div', { class: 'texts' });
       l.texts.forEach(function (t) {
         var b = bestOf(sub.id, t.id);
         ul.appendChild(h('a', { class: 'trow', href: '#/s/' + sub.id + '/' + t.id }, [
           h('span', { class: 'tag' }, [t.kind || '']), h('span', { class: 'zh tt' }, [t.title]),
-          h('span', { class: 'score' + (b && b.pct >= 80 ? ' good' : '') }, [b ? b.pct + '%' : '–'])
+          sub.read ? h('span', { class: 'score' + (store.get('seen:' + sub.id + ':' + t.id, 0) ? ' good' : '') }, [store.get('seen:' + sub.id + ':' + t.id, 0) ? '✓ đã đọc' : '–'])
+            : h('span', { class: 'score' + (b && b.pct >= 80 ? ' good' : '') }, [b ? b.pct + '%' : '–'])
         ]));
       });
-      ul.appendChild(h('a', { class: 'trow sub', href: '#/s/' + sub.id + '/tu-vung/' + l.n }, ['🃏 Từ vựng bài ' + l.n]));
+      ul.appendChild(h('a', { class: 'trow sub', href: '#/s/' + sub.id + '/tu-vung/' + l.n }, ['🃏 Từ vựng ' + (sub.read ? 'chương ' : 'bài ') + l.n]));
       box.appendChild(ul); app.appendChild(box);
     });
   }
 
   var TABS = [['doc', '📖 Đọc'], ['bt', '✍ Bài tập sách'], ['tu', '🃏 Từ vựng'], ['nghe', '🎧 Nghe'], ['noi', '🗣 Nói'], ['cau', '🧩 Câu & đoạn'], ['nc', '🔬 Nâng cao'], ['viet', '📝 Viết']];
   function textView(sub, l, t, tab) {
-    crumb.innerHTML = ' › <a href="#/s/' + sub.id + '">' + esc(sub.name) + '</a> › Bài ' + l.n;
+    crumb.innerHTML = ' › <a href="#/s/' + sub.id + '">' + esc(sub.name) + '</a> › ' + (sub.read ? 'Chương ' : 'Bài ') + l.n;
     app.innerHTML = '';
     app.appendChild(h('div', { class: 'thead' }, [
       h('span', { class: 'tag' }, [t.kind || '']), h('h1', { class: 'zh' }, [t.title]),
       t.words || t.time ? h('span', { class: 'muted' }, [(t.words ? 'khoảng ' + t.words + ' chữ' : '') + (t.words && t.time ? ' · ' : '') + (t.time ? 'thời gian tham khảo ' + t.time + ' phút' : '')]) : null
     ]));
     var nav = h('nav', { class: 'tabs' });
-    TABS.forEach(function (x) { nav.appendChild(h('a', { href: '#/s/' + sub.id + '/' + t.id + '/' + x[0], class: x[0] === tab ? 'on' : '' }, [sub.listen && x[0] === 'doc' ? '🎧 Bài nghe' : x[1]])); });
+    (sub.read ? TABS.filter(function (x) { return x[0] === 'doc' || x[0] === 'tu'; }) : TABS).forEach(function (x) { nav.appendChild(h('a', { href: '#/s/' + sub.id + '/' + t.id + '/' + x[0], class: x[0] === tab ? 'on' : '' }, [sub.listen && x[0] === 'doc' ? '🎧 Bài nghe' : x[1]])); });
     app.appendChild(nav);
     var body = h('div', { class: 'tabbody' }); app.appendChild(body);
     ({ doc: tabRead, bt: tabBook, tu: tabWords, nghe: tabListen, noi: tabSpeak, cau: tabSentence, nc: tabAdvanced, viet: tabWrite }[tab] || tabRead)(sub, l, t, body);
@@ -272,7 +274,62 @@
       body.appendChild(h('details', { class: 'card' }, [h('summary', null, ['Từ mới (' + t.notes.length + ')']), nl]));
     }
   }
+  /* sách đọc (sub.read): chỉ có văn bản, từ khó gạch chân, câu khó tô nền (t.hard:[[câu, giải thích, dịch]]) và ô tổng hợp từ vựng cuối trang */
+  function tabReader(sub, l, t, body) {
+    app.classList.add('wide'); document.body.classList.remove('rd-open');
+    store.set('seen:' + sub.id + ':' + t.id, Date.now());
+    body.appendChild(h('div', { class: 'bar' }, [h('button', { class: 'btn ghost', on: { click: function () { speak(plain(t.p.join(''))); } } }, ['🔊 Nghe cả trang']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()]));
+    body.appendChild(h('p', { class: 'tip' }, ['Sách đọc: đọc liền một mạch. Chạm từ gạch chân để xem nghĩa (từ đó cũng sáng lên trong ô từ vựng bên cạnh; trên điện thoại bấm nút 📒). Chạm câu tô nền ①② để xem giải thích và bản dịch. Ôn thẻ từ ở tab Từ vựng.']));
+    var hard = t.hard || [], art = h('article', { class: 'zh reading' });
+    t.p.forEach(function (p, i) {
+      var s = p;
+      hard.forEach(function (x, k) { s = s.replace(x[0], '\u0003' + k + '\u0004' + x[0] + '\u0005'); });
+      var html = paraHtml(s, t.notes).replace(/\u0003(\d+)\u0004/g, function (_, k) { return '<span class="hs" data-k="' + k + '"><sup>' + '①②③④⑤⑥⑦⑧⑨⑩'.charAt(+k) + '</sup>'; }).replace(/\u0005/g, '</span>');
+      art.appendChild(h('p', { html: html }));
+    });
+    if (t.src) art.appendChild(h('p', { class: 'src' }, [t.src]));
+    bindGloss(art);
+    art.addEventListener('click', function (e) {
+      if (e.target.closest('.nw')) return;
+      var w = e.target.closest('.hs'); if (!w) return;
+      var para = w.closest('p'), k = +w.getAttribute('data-k'), old = para.nextElementSibling;
+      if (old && old.classList.contains('hs-x') && old.getAttribute('data-k') == k) { old.remove(); return; }
+      if (old && old.classList.contains('hs-x')) old.remove();
+      para.after(hsBox(hard[k], k, 'hs-x'));
+    });
+    var wrap = h('div', { class: 'rd-wrap' }, [art]), side = h('aside', { class: 'rd-side' });
+    if (t.notes && t.notes.length) {
+      var nl = h('dl', { class: 'notes' });
+      t.notes.forEach(function (n) { nl.appendChild(h('dt', { class: 'zh', 'data-w': n[0] }, [n[0]])); nl.appendChild(h('dd', null, [n[1] + ' · ' + n[2]])); });
+      side.appendChild(h('h3', null, ['📒 Từ vựng trang này (' + t.notes.length + ')']));
+      side.appendChild(nl);
+      /* chạm từ trong bài thì tô từ đó trong ô từ vựng */
+      art.addEventListener('click', function (e) {
+        var w = e.target.closest('.nw'); if (!w) return;
+        side.querySelectorAll('.on').forEach(function (x) { x.classList.remove('on'); });
+        var dt = side.querySelector('dt[data-w="' + w.textContent.replace(/"/g, '') + '"]');
+        if (dt) { dt.classList.add('on'); dt.nextSibling.classList.add('on'); if (getComputedStyle(side).position === 'sticky') dt.scrollIntoView({ block: 'nearest' }); }
+      });
+      wrap.appendChild(side);
+      body.appendChild(h('button', { class: 'btn rd-fab', on: { click: function () { document.body.classList.toggle('rd-open'); } } }, ['📒']));
+      side.appendChild(h('button', { class: 'btn ghost sm rd-close', on: { click: function () { document.body.classList.remove('rd-open'); } } }, ['Đóng']));
+    }
+    body.appendChild(wrap);
+    if (hard.length) {
+      var hc = h('details', { class: 'card' }, [h('summary', null, ['🧩 Câu khó trang này (' + hard.length + ')'])]);
+      hard.forEach(function (x, k) { hc.appendChild(hsBox(x, k, '')); });
+      body.appendChild(hc);
+    }
+  }
+  function hsBox(x, k, cls) {
+    return h('div', { class: 'hs-box ' + cls, 'data-k': k }, [
+      h('p', { class: 'zh' }, [h('b', null, ['①②③④⑤⑥⑦⑧⑨⑩'.charAt(k) + ' ']), x[0]]),
+      h('p', { html: esc(x[1]).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') }),
+      x[2] ? h('p', { class: 'muted' }, ['→ ' + x[2]]) : null
+    ]);
+  }
   function tabRead(sub, l, t, body) {
+    if (sub.read) return tabReader(sub, l, t, body);
     if (sub.listen) return tabListenText(sub, l, t, body);
     var timer = null, start = 0, chars = t.p.join('').replace(/[^\u4e00-\u9fff]/g, '').length;
     var clock = h('span', { class: 'clock' }, ['0:00']);
@@ -457,11 +514,11 @@
     flashcards(sub, list, body);
   }
   function review(sub, ln) {
-    crumb.innerHTML = ' › <a href="#/s/' + sub.id + '">' + esc(sub.name) + '</a> › Từ vựng' + (ln ? ' bài ' + ln : '');
+    crumb.innerHTML = ' › <a href="#/s/' + sub.id + '">' + esc(sub.name) + '</a> › Từ vựng' + (ln ? (sub.read ? ' chương ' : ' bài ') + ln : '');
     app.innerHTML = '';
     var list = allWords(sub, ln ? function (l) { return String(l.n) === ln; } : null);
     var due = ln ? list : dueWords(sub, list);
-    app.appendChild(h('h1', null, [ln ? 'Từ vựng bài ' + ln : 'Ôn từ hôm nay']));
+    app.appendChild(h('h1', null, [ln ? 'Từ vựng ' + (sub.read ? 'chương ' : 'bài ') + ln : 'Ôn từ hôm nay']));
     if (!due.length) { app.appendChild(h('p', { class: 'card' }, ['Hôm nay không còn từ nào cần ôn. 🎉'])); return; }
     var body = h('div'); app.appendChild(body); flashcards(sub, shuffle(due).slice(0, 40), body);
   }
