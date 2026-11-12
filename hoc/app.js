@@ -256,8 +256,10 @@
       h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏹ Dừng']), rateCtl()]);
   }
   function tabListenText(sub, l, t, body) {
-    body.appendChild(h('p', { class: 'tip' }, ['Nghe cả bài 2 lần, không nhìn chữ. Sang tab Bài tập sách làm bài (ở đó cũng có nút nghe), chấm xong mới mở bài khóa ra đối chiếu. Chỉnh tốc độ đọc ở tab Nghe.']));
+    body.appendChild(h('p', { class: 'tip' }, [t.tip || 'Nghe cả bài 2 lần, không nhìn chữ. Sang tab Bài tập sách làm bài (ở đó cũng có nút nghe), chấm xong mới mở bài khóa ra đối chiếu. Chỉnh tốc độ đọc ở tab Nghe.']));
     body.appendChild(listenBar(t));
+    /* môn nghe có bài giảng tiếng Việt: để đóng sẵn, nghe và làm bài xong mới mở */
+    if (t.vi) { var lec = viLecture(t); lec.open = false; body.appendChild(lec); }
     var art = h('article', { class: 'zh reading pre', hidden: true });
     t.p.forEach(function (p, i) {
       var pp = h('p', { html: '<span class="pn">[' + (i + 1) + ']</span>' + paraHtml(p, t.notes) });
