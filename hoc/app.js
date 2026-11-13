@@ -77,7 +77,22 @@
 
   /* ---------- đọc to (TTS) và micro ---------- */
   var zhVoice = null;
-  function pickVoice() { if (!window.speechSynthesis) return; var vs = speechSynthesis.getVoices(); zhVoice = vs.filter(function (v) { return /zh[-_]CN/i.test(v.lang); })[0] || vs.filter(function (v) { return /^zh/i.test(v.lang); })[0] || null; }
+  /* xếp hạng giọng: ưu tiên giọng thần kinh (Edge: "Online (Natural)" như Xiaoxiao, Yunxi; Chrome: Google 普通话), rồi giọng đại lục */
+  function voiceScore(v) {
+    var n = v.name || '', s = 0;
+    if (/natural|neural/i.test(n)) s += 20; if (/online/i.test(n)) s += 5;
+    if (/xiaoxiao|yunxi|xiaoyi|yunjian|hoaimy|namminh/i.test(n)) s += 4;
+    if (/google/i.test(n)) s += 10;
+    if (/xiaobei|xiaoni|liaoning|shaanxi/i.test(n)) s -= 15; /* giọng phương ngữ */
+    if (/zh[-_]CN/i.test(v.lang) || /^vi/i.test(v.lang)) s += 3;
+    return s;
+  }
+  function voicesFor(re) { return window.speechSynthesis ? speechSynthesis.getVoices().filter(function (v) { return re.test(v.lang); }).sort(function (a, b) { return voiceScore(b) - voiceScore(a); }) : []; }
+  function pickVoice() {
+    var vs = voicesFor(/^zh/i).filter(function (v) { return !/HK|TW|yue/i.test(v.lang); }), want = store.get('voice', '');
+    if (!vs.length) vs = voicesFor(/^zh/i);
+    zhVoice = vs.filter(function (v) { return v.name === want; })[0] || vs[0] || null;
+  }
   if (window.speechSynthesis) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
   function speak(text, rate, onend) {
     if (!window.speechSynthesis) { alert('Trình duyệt này không đọc được tiếng Trung. Hãy dùng Chrome hoặc Edge.'); return; }
@@ -97,6 +112,25 @@
     sel.addEventListener('change', function () {
       store.set('rate', +sel.value);
       document.querySelectorAll('.rate-sel').forEach(function (o) { o.value = sel.value; });
+    });
+    return h('span', { class: 'voice-ctl' }, [sel, voiceCtl()]);
+  }
+  /* chọn giọng đọc: liệt kê giọng tiếng Trung có trên máy, giọng tốt nhất lên đầu */
+  function voiceCtl() {
+    var sel = h('select', { class: 'rate-sel voice-sel', title: 'Giọng đọc' });
+    function fill() {
+      pickVoice(); sel.innerHTML = '';
+      var vs = voicesFor(/^zh/i).filter(function (v) { return !/HK|yue/i.test(v.lang); });
+      if (!vs.length) { sel.appendChild(h('option', { value: '' }, ['🗣 Giọng mặc định'])); return; }
+      vs.forEach(function (v) { sel.appendChild(h('option', { value: v.name }, ['🗣 ' + v.name.replace(/^Microsoft /, '').replace(/ Online/, '').replace(/ - Chinese.*$/, '').replace(/\s*\(.*?\)\s*$/, function (m) { return /natural/i.test(m) ? ' ✨' : ''; }) + (/natural|neural|google/i.test(v.name) ? '' : ' (thường)')])); });
+      if (zhVoice) sel.value = zhVoice.name;
+    }
+    fill();
+    if (window.speechSynthesis && speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', fill);
+    sel.addEventListener('change', function () {
+      store.set('voice', sel.value); pickVoice();
+      document.querySelectorAll('.voice-sel').forEach(function (o) { o.value = sel.value; });
+      speak('你好，我用这个声音给你读课文。');
     });
     return sel;
   }
@@ -214,7 +248,7 @@
   }
 
   var viVoice = null;
-  function pickVi() { if (!window.speechSynthesis) return; viVoice = speechSynthesis.getVoices().filter(function (v) { return /^vi/i.test(v.lang); })[0] || null; }
+  function pickVi() { viVoice = voicesFor(/^vi/i)[0] || null; }
   function player(queue, opt) {
     app.innerHTML = '';
     if (!window.speechSynthesis) { app.appendChild(h('p', { class: 'card' }, ['Trình duyệt này không đọc được tiếng Trung. Hãy dùng Chrome hoặc Edge.'])); return; }
