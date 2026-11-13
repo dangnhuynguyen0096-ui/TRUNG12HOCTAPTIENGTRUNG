@@ -164,7 +164,7 @@
     crumb.textContent = ' › Nghe nhiều bài';
     app.innerHTML = '';
     var sel = {}; plSel().forEach(function (k) { sel[k] = 1; });
-    var opt = store.get('pl:opt', { rep: 1, gap: 0.6, mix: false, loop: false, show: true, vi: false });
+    var opt = store.get('pl:opt', { rep: 1, gap: 0.6, mix: false, loop: false, show: true, vi: false, duo: true }); if (opt.duo == null) opt.duo = true;
     function save() { store.set('pl:sel', Object.keys(sel).filter(function (k) { return sel[k]; })); store.set('pl:opt', opt); count(); }
     app.appendChild(h('section', { class: 'hero' }, [
       h('h1', null, ['🎧 Nghe nhiều bài liên tục']),
@@ -225,7 +225,7 @@
     }
     app.appendChild(h('section', { class: 'card' }, [h('h3', null, ['Cách nghe']),
       h('div', { class: 'bar' }, [rateCtl(), pick('rep', 'Mỗi bài nghe', [[1, '1 lần'], [2, '2 lần'], [3, '3 lần']]), pick('gap', 'Nghỉ giữa các câu', [[0, 'không nghỉ'], [0.6, '0,6 giây'], [1.5, '1,5 giây'], [3, '3 giây (kịp nhẩm lại)']])]),
-      h('div', { class: 'bar' }, [ck('mix', 'Trộn thứ tự các bài'), ck('loop', 'Hết danh sách thì nghe lại từ đầu'), ck('show', 'Hiện chữ khi nghe'), ck('vi', 'Đọc to nghĩa tiếng Việt của từ khó (lần đầu gặp trong bài)')])
+      h('div', { class: 'bar' }, [ck('mix', 'Trộn thứ tự các bài'), ck('loop', 'Hết danh sách thì nghe lại từ đầu'), ck('show', 'Hiện chữ khi nghe'), ck('vi', 'Đọc to nghĩa tiếng Việt của từ khó (lần đầu gặp trong bài)'), ck('duo', 'Hội thoại: mỗi người nói một giọng (nam/nữ)')])
     ]));
     app.appendChild(h('div', { class: 'bar sticky' }, [startB, cnt, h('button', { class: 'btn ghost sm', on: { click: function () {
       Object.keys(sel).forEach(function (k) { sel[k] = false; }); app.querySelectorAll('.pl-subj input').forEach(function (c) { c.checked = false; c.indeterminate = false; }); app.querySelectorAll('.pl-subj .score').forEach(function (x) { x.textContent = ''; }); save();
@@ -277,12 +277,15 @@
       var x = queue[qi], t = x.t, words = plWords(t);
       segs = []; art.innerHTML = ''; said = x.r ? said : {};
       plParas(t).forEach(function (p) {
-        var para = h('p');
+        var para = h('p'), who = null;
         (plain(p).match(/[^。！？；\n]+[。！？；」”]*|\n/g) || []).forEach(function (s) {
-          if (s === '\n') return para.appendChild(h('br'));
-          var say = spoken(s).trim(), ok = /[一-鿿]/.test(say);
+          if (s === '\n') { who = null; return para.appendChild(h('br')); }
+          /* hội thoại: "男：", "张天舒：" đầu câu = người nói; mỗi người một giọng */
+          var lab = s.match(/^\s*([^\s：:，。！？“”［\[]{1,5})[：:]/);
+          if (lab) who = lab[1];
+          var say = spoken(s).replace(/［[^］]*］/g, '').trim(), ok = /[一-鿿]/.test(say);
           var hw = ok ? words.filter(function (n) { return s.indexOf(n[0]) >= 0; }) : [];
-          var sp = h('span', { class: 'pl-s', html: paraHtml(s, words) }); if (ok) { sp.dataset.i = segs.length; segs.push({ say: say, hw: hw, el: sp }); }
+          var sp = h('span', { class: 'pl-s', html: paraHtml(s, words) }); if (ok) { sp.dataset.i = segs.length; segs.push({ say: say, hw: hw, el: sp, who: who }); }
           para.appendChild(sp);
         });
         art.appendChild(para);
@@ -292,6 +295,19 @@
       head.appendChild(h('h1', { class: 'zh' }, [t.title]));
       upnext.querySelectorAll('li').forEach(function (li, i) { li.classList.toggle('on', i === qi); });
       draw();
+    }
+    /* giọng cho người nói: 男/先生… giọng nam, 女/小姐… giọng nữ, còn lại xen kẽ nữ/nam theo thứ tự xuất hiện; lời dẫn dùng giọng đã chọn */
+    var MALE = /yunxi|yunjian|yunyang|yunxia|yunfeng|yunhao|yunye|yunze|kangkang|male|男/i;
+    function voiceOf(who) {
+      if (!who || opt.duo === false) return null;
+      var vs = voicesFor(/^zh/i).filter(function (v) { return !/HK|TW|yue/i.test(v.lang) && !/xiaobei|xiaoni|liaoning|shaanxi/i.test(v.name); });
+      var good = vs.filter(function (v) { return /natural|neural/i.test(v.name); }); if (good.length >= 2) vs = good;
+      var m = vs.filter(function (v) { return MALE.test(v.name); }), f = vs.filter(function (v) { return !MALE.test(v.name); });
+      if (!m.length || !f.length) return null;
+      var ks = []; segs.forEach(function (s) { if (s.who && ks.indexOf(s.who) < 0) ks.push(s.who); });
+      var i = ks.indexOf(who), male = /男|先生|爸|父|哥|弟|爷|叔|伯|^[BＢ乙]$/.test(who) ? true : /女|小姐|太太|妈|母|姐|妹|奶|阿姨|^[AＡ甲]$/.test(who) ? false : i % 2 === 1;
+      var pool = male ? m : f;
+      return pool[Math.floor(i / 2) % pool.length];
     }
     function draw() { art.hidden = !opt.show; showB.textContent = opt.show ? '🙈 Ẩn chữ (chỉ nghe)' : '👁 Hiện chữ'; }
     function hintFor(seg) {
@@ -303,10 +319,10 @@
       hint.appendChild(dl);
     }
     /* đọc một câu; chỉ gọi tiếp khi vẫn đúng lượt (bấm nút khác thì lượt cũ bỏ) */
-    function say(text, lang, cb) {
+    function say(text, lang, cb, voice) {
       var my = tok, done = false, began = Date.now(), u = new SpeechSynthesisUtterance(text);
       u.lang = lang; u.rate = store.get('rate', 0.9);
-      if (lang === 'zh-CN' && zhVoice) u.voice = zhVoice; if (lang === 'vi-VN' && viVoice) u.voice = viVoice;
+      if (lang === 'zh-CN' && zhVoice) u.voice = voice || zhVoice; if (lang === 'vi-VN' && viVoice) u.voice = viVoice;
       function fin() { if (done) return; done = true; clearInterval(w); if (my === tok) cb(); }
       u.onend = fin; u.onerror = fin;
       /* phòng khi máy không báo đọc xong (hay gặp trên điện thoại) */
@@ -338,7 +354,7 @@
           if (k < news.length) { said[news[k][0]] = 1; return say(news[k][0], 'zh-CN', function () { say(news[k][2], 'vi-VN', function () { vi(k + 1); }); }); }
           si++; later((opt.gap || 0) * 1000 + 150, step);
         })(0);
-      });
+      }, voiceOf(seg.who));
     }
     function pause() { tok++; speechSynthesis.cancel(); clearTimeout(timer); playing = false; pp.textContent = '▶ Nghe tiếp'; wake(false); }
     function stop() { pause(); }
