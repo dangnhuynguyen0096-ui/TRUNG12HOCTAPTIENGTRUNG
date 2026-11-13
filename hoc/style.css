@@ -121,3 +121,23 @@ main.wide { max-width: 1180px; }
   .rd-fab { display: block; position: fixed; right: 16px; bottom: 18px; z-index: 19; border-radius: 50%; width: 52px; height: 52px; font-size: 1.4rem; padding: 0; box-shadow: 0 3px 10px rgba(0,0,0,.25); }
   .rd-close { display: inline-block; position: absolute; top: 8px; right: 10px; }
 }
+/* nghe nhiều bài liên tục */
+.pl-cta { display: block; color: var(--ink); border-color: var(--red); }
+.pl-cta b { color: var(--red); }
+.pl-subj summary { cursor: pointer; }
+.pl-subj summary input, .pl-row input { width: 18px; height: 18px; vertical-align: middle; accent-color: var(--red); }
+.pl-row { cursor: pointer; }
+.pl-kind { font-size: .8rem; white-space: nowrap; }
+.pl-opt { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; font-size: .95rem; }
+.pl-head h1 { margin-top: 0; }
+.pl-hint { position: sticky; top: 46px; z-index: 4; border-left: 4px solid var(--gold); min-height: 64px; max-height: 34vh; overflow-y: auto; }
+.pl-hint h3 { font-size: .95rem; color: var(--gold); margin: 0 0 4px; }
+.pl-hint .notes dt { font-size: 1.15rem; }
+.pl-hint .notes dd { color: var(--ink); }
+.pl-py { color: var(--red); font-weight: 600; }
+.pl-art .pl-s { cursor: pointer; border-radius: 4px; }
+.pl-art .pl-s.on { background: var(--blank); box-shadow: 0 0 0 2px var(--blank); }
+.pl-art .nw.hot { background: color-mix(in srgb, var(--gold) 35%, transparent); border-bottom-style: solid; }
+.pl-queue li.on { font-weight: 700; }
+.pl-queue a { color: var(--ink); }
+.pl-ctl .btn { margin: 0; }

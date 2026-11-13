@@ -114,6 +114,216 @@
     function fallback() { var t = h('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) {} t.remove(); }
   }
 
+  /* ---------- 🎧 Nghe nhiều bài liên tục: chọn bài khóa ở nhiều môn, máy đọc nối tiếp từng câu, câu nào có từ khó thì nhắc nghĩa ---------- */
+  /* nội dung để nghe của một văn bản: bài khóa (t.p); văn bản ngữ pháp (t.zh) thì đọc câu ví dụ */
+  function plParas(t) {
+    var ps = t.zh ? t.zh : t.p.map(function (p) { return p.replace(/^## /, ''); });
+    return ps.filter(function (p) { return /[一-鿿]/.test(p); });
+  }
+  function plWords(t) {
+    var seen = {}, out = [];
+    (t.notes || []).concat((t.adv && t.adv.v) || []).forEach(function (n) { if (n[0] && !seen[n[0]]) { seen[n[0]] = 1; out.push(n); } });
+    return out;
+  }
+  function plSel() { return store.get('pl:sel', []); }
+  function playlistView() {
+    crumb.textContent = ' › Nghe nhiều bài';
+    app.innerHTML = '';
+    var sel = {}; plSel().forEach(function (k) { sel[k] = 1; });
+    var opt = store.get('pl:opt', { rep: 1, gap: 0.6, mix: false, loop: false, show: true, vi: false });
+    function save() { store.set('pl:sel', Object.keys(sel).filter(function (k) { return sel[k]; })); store.set('pl:opt', opt); count(); }
+    app.appendChild(h('section', { class: 'hero' }, [
+      h('h1', null, ['🎧 Nghe nhiều bài liên tục']),
+      h('p', { class: 'muted' }, ['Tích các môn, các bài khóa muốn nghe. Máy đọc nối tiếp từng câu như một danh sách phát; câu nào có từ khó thì từ đó sáng lên và nghĩa hiện ngay trong ô 💡 (có thể bật đọc to nghĩa tiếng Việt). Lựa chọn được nhớ cho lần sau.'])
+    ]));
+    var cnt = h('b'), startB = h('button', { class: 'btn', on: { click: start } }, ['▶ Bắt đầu nghe']);
+    function count() {
+      var n = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
+      cnt.textContent = n ? 'Đã chọn ' + n + ' bài' : 'Chưa chọn bài nào';
+      startB.disabled = !n;
+    }
+    SUBJECTS.forEach(function (s) {
+      var box = h('details', { class: 'card lesson pl-subj' }), list = h('div', { class: 'texts' }, [h('p', { class: 'muted' }, ['Đang tải…'])]);
+      var all = h('input', { type: 'checkbox', title: 'Chọn cả môn (các bài khóa)' }), tag = h('span', { class: 'score' });
+      var filled = false, boxes = [];
+      function refresh() {
+        var on = boxes.filter(function (b) { return b.checked; }).length;
+        var main = boxes.filter(function (b) { return !b.dataset.g; }); if (!main.length) main = boxes;
+        var full = main.every(function (b) { return b.checked; });
+        all.checked = on > 0 && full; all.indeterminate = on > 0 && !full;
+        tag.textContent = on ? on + ' bài' : ''; tag.classList.toggle('good', on > 0);
+      }
+      function fill(cb) {
+        if (filled) return cb && cb();
+        loadSubject(s.id, function (sub) {
+          if (filled || !sub) return; filled = true; list.innerHTML = '';
+          sub.lessons.forEach(function (l) {
+            l.texts.forEach(function (t) {
+              if (!plParas(t).length) return;
+              var k = s.id + ':' + t.id, c = h('input', { type: 'checkbox' }); c.checked = !!sel[k]; c.dataset.k = k; if (t.zh) c.dataset.g = 1;
+              c.addEventListener('change', function () { sel[k] = c.checked; save(); refresh(); });
+              boxes.push(c);
+              list.appendChild(h('label', { class: 'trow pl-row' }, [c, h('span', { class: 'tag' }, [(sub.read ? 'Ch.' : 'Bài ') + l.n]), h('span', { class: 'zh tt' }, [t.title]), t.kind ? h('span', { class: 'muted pl-kind zh' }, [t.kind]) : null]));
+            });
+          });
+          refresh(); if (cb) cb();
+        });
+      }
+      all.addEventListener('click', function (e) { e.stopPropagation(); });
+      all.addEventListener('change', function () {
+        var want = all.checked;
+        fill(function () {
+          /* chọn cả môn = các bài khóa; phần ngữ pháp (chỉ có câu ví dụ) chỉ tự chọn khi môn không có bài khóa nào */
+          var main = boxes.filter(function (b) { return !b.dataset.g; }); if (!main.length) main = boxes;
+          (want ? main : boxes).forEach(function (b) { b.checked = want; sel[b.dataset.k] = want; });
+          save(); refresh();
+        });
+      });
+      box.addEventListener('toggle', function () { if (box.open) fill(); });
+      box.appendChild(h('summary', null, [all, ' ', h('b', null, [s.name]), ' ', h('span', { class: 'zh muted' }, [s.book]), ' ', tag]));
+      box.appendChild(list); app.appendChild(box);
+      if (plSel().some(function (k) { return k.indexOf(s.id + ':') === 0; })) fill();
+    });
+    function ck(key, label) { var c = h('input', { type: 'checkbox' }); c.checked = !!opt[key]; c.addEventListener('change', function () { opt[key] = c.checked; save(); }); return h('label', { class: 'pl-opt' }, [c, ' ' + label]); }
+    function pick(key, label, vals) {
+      var s = h('select', null, vals.map(function (v) { return h('option', { value: v[0] }, [v[1]]); })); s.value = String(opt[key]);
+      s.addEventListener('change', function () { opt[key] = +s.value; save(); }); return h('label', { class: 'pl-opt' }, [label + ' ', s]);
+    }
+    app.appendChild(h('section', { class: 'card' }, [h('h3', null, ['Cách nghe']),
+      h('div', { class: 'bar' }, [rateCtl(), pick('rep', 'Mỗi bài nghe', [[1, '1 lần'], [2, '2 lần'], [3, '3 lần']]), pick('gap', 'Nghỉ giữa các câu', [[0, 'không nghỉ'], [0.6, '0,6 giây'], [1.5, '1,5 giây'], [3, '3 giây (kịp nhẩm lại)']])]),
+      h('div', { class: 'bar' }, [ck('mix', 'Trộn thứ tự các bài'), ck('loop', 'Hết danh sách thì nghe lại từ đầu'), ck('show', 'Hiện chữ khi nghe'), ck('vi', 'Đọc to nghĩa tiếng Việt của từ khó (lần đầu gặp trong bài)')])
+    ]));
+    app.appendChild(h('div', { class: 'bar sticky' }, [startB, cnt, h('button', { class: 'btn ghost sm', on: { click: function () {
+      Object.keys(sel).forEach(function (k) { sel[k] = false; }); app.querySelectorAll('.pl-subj input').forEach(function (c) { c.checked = false; c.indeterminate = false; }); app.querySelectorAll('.pl-subj .score').forEach(function (x) { x.textContent = ''; }); save();
+    } } }, ['Bỏ chọn hết'])]));
+    count();
+    function start() {
+      var keys = Object.keys(sel).filter(function (k) { return sel[k]; }), ids = [];
+      keys.forEach(function (k) { var id = k.split(':')[0]; if (ids.indexOf(id) < 0) ids.push(id); });
+      startB.disabled = true; startB.textContent = 'Đang chuẩn bị…';
+      (function next(i) {
+        if (i < ids.length) return loadSubject(ids[i], function () { next(i + 1); });
+        var q = [];
+        /* giữ thứ tự môn như danh sách môn, bài như trong sách */
+        SUBJECTS.forEach(function (s) { var sub = DB[s.id]; if (!sub) return; sub.lessons.forEach(function (l) { l.texts.forEach(function (t) { if (sel[s.id + ':' + t.id] && plParas(t).length) q.push({ sub: sub, l: l, t: t }); }); }); });
+        if (opt.mix) q = shuffle(q);
+        var full = []; q.forEach(function (x) { for (var r = 0; r < (opt.rep || 1); r++) full.push({ sub: x.sub, l: x.l, t: x.t, r: r }); });
+        player(full, opt);
+      })(0);
+    }
+  }
+
+  var viVoice = null;
+  function pickVi() { if (!window.speechSynthesis) return; viVoice = speechSynthesis.getVoices().filter(function (v) { return /^vi/i.test(v.lang); })[0] || null; }
+  function player(queue, opt) {
+    app.innerHTML = '';
+    if (!window.speechSynthesis) { app.appendChild(h('p', { class: 'card' }, ['Trình duyệt này không đọc được tiếng Trung. Hãy dùng Chrome hoặc Edge.'])); return; }
+    pickVi(); pickVoice();
+    var tok = 0, qi = 0, si = 0, segs = [], playing = false, said = {}, lock = null, timer = null;
+    var head = h('div', { class: 'pl-head' }), hint = h('div', { class: 'pl-hint card' }), art = h('article', { class: 'zh reading pl-art' }), upnext = h('ol', { class: 'pl-queue' });
+    var pp = h('button', { class: 'btn', on: { click: function () { playing ? pause() : go(qi, si); } } }, ['⏸ Tạm dừng']);
+    var ctl = h('div', { class: 'bar sticky pl-ctl' }, [
+      h('button', { class: 'btn ghost', title: 'Câu trước', on: { click: function () { go(qi, Math.max(0, si - 1)); } } }, ['⏮']), pp,
+      h('button', { class: 'btn ghost', title: 'Câu sau', on: { click: function () { si + 1 < segs.length ? go(qi, si + 1) : go(qi + 1, 0); } } }, ['⏭']),
+      h('button', { class: 'btn ghost', on: { click: function () { go(qi - 1 >= 0 ? qi - 1 : 0, 0); } } }, ['‹ Bài trước']),
+      h('button', { class: 'btn ghost', on: { click: function () { go(qi + 1, 0); } } }, ['Bài sau ›']),
+      rateCtl(),
+      h('button', { class: 'btn ghost', on: { click: function () { stop(); playlistView(); } } }, ['⏹ Chọn lại bài'])
+    ]);
+    var showB = h('button', { class: 'btn ghost sm', on: { click: function () { opt.show = !opt.show; store.set('pl:opt', opt); draw(); } } });
+    app.appendChild(head); app.appendChild(hint); app.appendChild(h('div', { class: 'bar' }, [showB])); app.appendChild(art);
+    app.appendChild(h('details', { class: 'card' }, [h('summary', null, ['Danh sách phát (' + queue.length + ')']), upnext]));
+    app.appendChild(ctl);
+    queue.forEach(function (x, i) { upnext.appendChild(h('li', null, [h('a', { href: 'javascript:void 0', on: { click: function () { go(i, 0); } } }, [x.sub.name + ' · ' + (x.sub.read ? 'Ch.' : 'Bài ') + x.l.n + ' · ', h('span', { class: 'zh' }, [x.t.title]), x.r ? ' (lần ' + (x.r + 1) + ')' : ''])])); });
+    bindGloss(art);
+    art.addEventListener('click', function (e) { if (e.target.closest('.nw')) return; var s = e.target.closest('.pl-s'); if (s && s.dataset.i) go(qi, +s.dataset.i); });
+    window.addEventListener('hashchange', stop, { once: true });
+
+    function build() {
+      var x = queue[qi], t = x.t, words = plWords(t);
+      segs = []; art.innerHTML = ''; said = x.r ? said : {};
+      plParas(t).forEach(function (p) {
+        var para = h('p');
+        (plain(p).match(/[^。！？；\n]+[。！？；」”]*|\n/g) || []).forEach(function (s) {
+          if (s === '\n') return para.appendChild(h('br'));
+          var say = spoken(s).trim(), ok = /[一-鿿]/.test(say);
+          var hw = ok ? words.filter(function (n) { return s.indexOf(n[0]) >= 0; }) : [];
+          var sp = h('span', { class: 'pl-s', html: paraHtml(s, words) }); if (ok) { sp.dataset.i = segs.length; segs.push({ say: say, hw: hw, el: sp }); }
+          para.appendChild(sp);
+        });
+        art.appendChild(para);
+      });
+      head.innerHTML = '';
+      head.appendChild(h('p', { class: 'muted' }, ['Bài ' + (qi + 1) + '/' + queue.length + ' · ' + x.sub.name + ' · ' + (x.sub.read ? 'Chương ' : 'Bài ') + x.l.n + (x.r ? ' · nghe lần ' + (x.r + 1) : '')]));
+      head.appendChild(h('h1', { class: 'zh' }, [t.title]));
+      upnext.querySelectorAll('li').forEach(function (li, i) { li.classList.toggle('on', i === qi); });
+      draw();
+    }
+    function draw() { art.hidden = !opt.show; showB.textContent = opt.show ? '🙈 Ẩn chữ (chỉ nghe)' : '👁 Hiện chữ'; }
+    function hintFor(seg) {
+      hint.innerHTML = '';
+      hint.appendChild(h('h3', null, ['💡 Từ khó trong câu đang đọc']));
+      if (!seg || !seg.hw.length) { hint.appendChild(h('p', { class: 'muted' }, ['(câu này không có từ khó)'])); return; }
+      var dl = h('dl', { class: 'notes' });
+      seg.hw.forEach(function (n) { dl.appendChild(h('dt', { class: 'zh' }, [n[0]])); dl.appendChild(h('dd', null, [h('span', { class: 'pl-py' }, [n[1]]), ' · ' + n[2]])); });
+      hint.appendChild(dl);
+    }
+    /* đọc một câu; chỉ gọi tiếp khi vẫn đúng lượt (bấm nút khác thì lượt cũ bỏ) */
+    function say(text, lang, cb) {
+      var my = tok, done = false, began = Date.now(), u = new SpeechSynthesisUtterance(text);
+      u.lang = lang; u.rate = store.get('rate', 0.9);
+      if (lang === 'zh-CN' && zhVoice) u.voice = zhVoice; if (lang === 'vi-VN' && viVoice) u.voice = viVoice;
+      function fin() { if (done) return; done = true; clearInterval(w); if (my === tok) cb(); }
+      u.onend = fin; u.onerror = fin;
+      /* phòng khi máy không báo đọc xong (hay gặp trên điện thoại) */
+      var w = setInterval(function () { var el = Date.now() - began; if ((el > 1500 && !speechSynthesis.speaking && !speechSynthesis.pending) || el > 4000 + text.length * 600 / u.rate) fin(); }, 400);
+      speechSynthesis.speak(u);
+    }
+    function later(ms, fn) { var my = tok; clearTimeout(timer); timer = setTimeout(function () { if (my === tok) fn(); }, ms); }
+    function go(q, s) {
+      tok++; speechSynthesis.cancel(); clearTimeout(timer);
+      if (q >= queue.length) { if (opt.loop && queue.length) q = 0; else return finish(); }
+      if (q < 0) q = 0;
+      var fresh = q !== qi || !segs.length; qi = q; si = s;
+      if (fresh) build();
+      playing = true; pp.textContent = '⏸ Tạm dừng'; wake(true);
+      var x = queue[qi];
+      if (s === 0 && fresh && /[一-鿿]/.test(x.t.title)) say(x.t.title.replace(/[（(].*?[)）]/g, ''), 'zh-CN', function () { later(800, step); });
+      else step();
+    }
+    function step() {
+      if (si >= segs.length) { return later(1800, function () { go(qi + 1, 0); }); }
+      var seg = segs[si];
+      art.querySelectorAll('.pl-s.on, .nw.hot').forEach(function (e) { e.classList.remove('on', 'hot'); });
+      seg.el.classList.add('on'); seg.el.querySelectorAll('.nw').forEach(function (e) { e.classList.add('hot'); });
+      if (opt.show) seg.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      hintFor(seg);
+      say(seg.say, 'zh-CN', function () {
+        var news = opt.vi && viVoice ? seg.hw.filter(function (n) { return !said[n[0]]; }) : [];
+        (function vi(k) {
+          if (k < news.length) { said[news[k][0]] = 1; return say(news[k][0], 'zh-CN', function () { say(news[k][2], 'vi-VN', function () { vi(k + 1); }); }); }
+          si++; later((opt.gap || 0) * 1000 + 150, step);
+        })(0);
+      });
+    }
+    function pause() { tok++; speechSynthesis.cancel(); clearTimeout(timer); playing = false; pp.textContent = '▶ Nghe tiếp'; wake(false); }
+    function stop() { pause(); }
+    function finish() {
+      playing = false; pp.textContent = '▶ Nghe tiếp'; wake(false);
+      hint.innerHTML = ''; hint.appendChild(h('p', null, ['✅ Đã nghe hết danh sách ' + queue.length + ' bài.']));
+      hint.appendChild(h('div', { class: 'bar' }, [h('button', { class: 'btn', on: { click: function () { segs = []; go(0, 0); } } }, ['↻ Nghe lại từ đầu']), h('button', { class: 'btn ghost', on: { click: playlistView } }, ['Chọn bài khác'])]));
+    }
+    /* giữ màn hình sáng khi đang nghe (tắt màn hình thì trình duyệt ngừng đọc) */
+    function wake(on) {
+      try {
+        if (on && !lock && navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { lock = l; }, function () {});
+        if (!on && lock) { lock.release(); lock = null; }
+      } catch (e) {}
+    }
+    if (opt.vi && !viVoice) hint.appendChild(h('p', { class: 'muted' }, ['Máy này chưa có giọng đọc tiếng Việt nên nghĩa chỉ hiện chữ, không đọc to.']));
+    qi = -1; go(0, 0);
+  }
+
   /* ---------- lặp lại ngắt quãng cho từ vựng ---------- */
   var GAP = [0, 1, 3, 7, 16, 35, 80];
   function today() { return Math.floor(Date.now() / 864e5); }
@@ -151,6 +361,7 @@
     var parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
     window.scrollTo(0, 0);
     if (!parts[0]) return home();
+    if (parts[0] === 'nghe') return playlistView();
     if (parts[0] === 's') loadSubject(parts[1], function (sub) {
       if (!sub) return;
       if (parts[2] === 'tu-vung') return review(sub, parts[3]);
@@ -176,6 +387,7 @@
       });
       return g;
     }
+    app.appendChild(h('a', { class: 'card pl-cta', href: '#/nghe' }, [h('b', null, ['🎧 Nghe nhiều bài liên tục']), h('span', { class: 'muted' }, [' Chọn bài khóa ở nhiều môn, máy đọc nối tiếp, từ khó được nhắc nghĩa.'])]));
     app.appendChild(grid(SUBJECTS.filter(function (s) { return !s.nc; })));
     var adv = SUBJECTS.filter(function (s) { return s.nc; });
     if (adv.length) {
