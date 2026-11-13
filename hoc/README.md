@@ -11,3 +11,5 @@ Tiến độ học lưu trong trình duyệt (localStorage) của từng máy.
 
 Sách đọc (môn có `read: true`): chỉ có tab Đọc và Từ vựng; từ khó gạch chân (`notes`), câu khó tô nền (`hard: [[câu, giải thích, dịch]]`), ô từ vựng nằm cạnh bài (điện thoại: nút 📒).
 Muốn giữ một sách chỉ ở bản trên máy (không lên repo), để file dữ liệu ở ngoài và thêm vào lúc dựng bản offline: `python3 hoc/tools/build_offline.py ra.html duong/dan/sach.js`.
+
+Nghe nhiều bài liên tục (`#/nghe`, nút 🎧 ở trang chủ): tích bài khóa ở nhiều môn, máy đọc nối tiếp từng câu; câu có từ khó (`notes`) thì ô 💡 hiện pinyin và nghĩa, có thể bật đọc to nghĩa tiếng Việt. Lựa chọn lưu trong máy.
