@@ -1,11 +1,11 @@
-/* Sinh phần ngữ pháp từng bài cho 3 môn thương mại từ tools/ngu-phap/<môn>.js, ghi vào cuối data/<môn>.js (giữa hai dấu @ngu-phap).
+/* Sinh phần ngữ pháp từng bài cho 3 môn thương mại + Khẩu ngữ 4 từ tools/ngu-phap/<môn>.js, ghi vào cuối data/<môn>.js (giữa hai dấu @ngu-phap).
    Chạy: node hoc/tools/build_grammar.js   (thêm --report để xem điểm nào không tìm thấy câu trong bài)
    Nguồn mỗi môn: module.exports = { prefix, lessons: { n: [điểm, ...] } }
    Một điểm giảng đầy đủ: { id, lv (1 cơ bản, 2 trung cấp, 3 nâng cao), h (mẫu), g (nghĩa ngắn), s (cấu trúc), m (ý nghĩa & cách dùng),
      u (dùng trong thương mại), f (regex tìm câu trong bài), k (từ khóa để đục lỗ bài điền), e [[câu, dịch]], x [[sai, đúng, lý do]], c (phân biệt) }
    Điểm đã giảng ở bài khác: chỉ ghi chuỗi id (hoặc { ref: id, lv }) → app hiện tóm tắt + câu trong bài này + link tới nơi giảng. */
 const fs = require('fs'), path = require('path');
-const D = path.join(__dirname, '..'), SUBS = ['hntm', 'dtm', 'tmns'];
+const D = path.join(__dirname, '..'), SUBS = ['hntm', 'dtm', 'tmns', 'ky4'];
 const report = process.argv.includes('--report');
 const DB = {};
 global.HOC = { add: s => { DB[s.id] = s; }, gram: () => {} };
@@ -13,7 +13,7 @@ const BEGIN = '/* @ngu-phap-begin */', END = '/* @ngu-phap-end */';
 function strip(src) { const a = src.indexOf(BEGIN); return a < 0 ? src : src.slice(0, a).replace(/\s+$/, '\n'); }
 for (const id of SUBS) eval(strip(fs.readFileSync(path.join(D, 'data', id + '.js'), 'utf8')));
 const SRC = {}; for (const id of SUBS) SRC[id] = require('./ngu-phap/' + id + '.js');
-const NAME = { hntm: 'HNTM viết', dtm: 'Đọc thương mại', tmns: 'HNTM nghe nói' };
+const NAME = { hntm: 'HNTM viết', dtm: 'Đọc thương mại', tmns: 'HNTM nghe nói', ky4: 'Khẩu ngữ 4' };
 
 function sentencesOf(l) {
   const out = [];
@@ -64,6 +64,7 @@ for (const id of SUBS) {
       } else {
         const o = { id: p.id, lv: p.lv, h: p.h, g: p.g, s: p.s, m: p.m };
         for (const k of ['u', 'e', 'x', 'c']) if (p[k]) o[k] = p[k];
+        if (p.u && SRC[id].ulabel) o.ul = SRC[id].ulabel;
         if (b.length) o.b = b;
         if (ALSO[p.id]) o.also = ALSO[p.id];
         gp.push(o);
@@ -88,6 +89,7 @@ for (const id of SUBS) {
     let i = l.texts.length;
     if (id === 'hntm') { const k = l.texts.findIndex(x => x.kind === '范文'); if (k >= 0) i = k; }
     else if (id === 'dtm') { const k = l.texts.findIndex(x => x.kind === '语言点'); if (k >= 0) i = k + 1; }
+    else if (id === 'ky4') { const k = l.texts.findIndex(x => /^内容链接/.test(x.title)); i = k >= 0 ? k : l.texts.length; }
     else i = 1;
     out.push({ n: l.n, i, t });
   }
