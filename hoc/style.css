@@ -156,3 +156,11 @@ main.wide { max-width: 1180px; }
 .tw-row { cursor: pointer; }
 .tw-row.on { background: var(--blank); border-radius: 6px; }
 .tw-row.tw-known { text-decoration: line-through; color: var(--muted); }
+/* tìm bài */
+.sx { padding: 10px 12px; }
+.sx-in { width: 100%; font-size: 1.05rem; padding: 10px 12px; border-radius: 10px; }
+.sx-out:not(:empty) { margin-top: 6px; max-height: 60vh; overflow-y: auto; }
+.sx-n { font-size: .85rem; margin: 8px 0 2px; }
+.sx-row { align-items: flex-start; }
+.sx-row .tt { display: flex; flex-wrap: wrap; gap: 0 4px; align-items: baseline; }
+.sx-snip { flex-basis: 100%; font-size: .9rem; color: var(--muted); }

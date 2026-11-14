@@ -14,3 +14,4 @@ Muốn giữ một sách chỉ ở bản trên máy (không lên repo), để fi
 
 Nghe nhiều bài liên tục (`#/nghe`, nút 🎧 ở trang chủ): tích bài khóa ở nhiều môn, máy đọc nối tiếp từng câu; câu có từ khó (`notes`) thì ô 💡 hiện pinyin và nghĩa, có thể bật đọc to nghĩa tiếng Việt. Lựa chọn lưu trong máy.
 Nghe từ vựng nhiều bài (`#/nghe-tu`): chọn bài ở nhiều môn, máy đọc từng từ trong `notes` (chữ Hán, nghĩa tiếng Việt, câu trong bài có từ đó); nút ⭐ đánh dấu đã thuộc (ghi vào lịch ôn thẻ từ).
+Tìm bài (ô 🔍 ở trang chủ): tìm theo tên bài, tên chương, loại bài, tên môn (gõ không dấu cũng được, "bài 2" lọc đúng số bài); gõ chữ Hán thì tìm cả trong nội dung.
