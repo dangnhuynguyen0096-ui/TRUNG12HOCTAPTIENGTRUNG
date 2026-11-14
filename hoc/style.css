@@ -164,3 +164,21 @@ main.wide { max-width: 1180px; }
 .sx-row { align-items: flex-start; }
 .sx-row .tt { display: flex; flex-wrap: wrap; gap: 0 4px; align-items: baseline; }
 .sx-snip { flex-basis: 100%; font-size: .9rem; color: var(--muted); }
+/* ngữ pháp từng bài (thẻ cơ bản → nâng cao) */
+.gp-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.gp-toc a { font-family: 'Noto Sans SC', sans-serif; font-size: .88rem; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--card); }
+.gp-h { margin: 18px 0 4px; color: var(--red); }
+.gp > summary { cursor: pointer; line-height: 1.5; }
+.gp-lv { font-size: .75rem; border-radius: 6px; padding: 1px 7px; background: var(--green-soft); color: var(--green); white-space: nowrap; }
+.gp.lv2 .gp-lv { background: var(--blank); color: var(--gold); }
+.gp.lv3 .gp-lv { background: var(--red-soft); color: var(--red); }
+.gp-sec h5 { margin: 12px 0 4px; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.gp-sec p { margin: 4px 0; }
+.gp-s { white-space: pre-line; background: var(--bg); border-left: 3px solid var(--red); padding: 6px 10px; border-radius: 0 8px 8px 0; }
+.gp-ex .gp-vi { display: block; margin-left: 2.6em; font-size: .9rem; }
+.gp-err { border-top: 1px dashed var(--line); padding-top: 4px; }
+.gp-err .bad { color: var(--red); text-decoration: line-through; text-decoration-thickness: 1px; }
+.gp-err .good { color: var(--green); }
+.gp-ref { background: var(--blank); border-radius: 8px; padding: 6px 10px; }
+.gp-also { font-size: .88rem; }
+.gp.flash { outline: 2px solid var(--gold); }
