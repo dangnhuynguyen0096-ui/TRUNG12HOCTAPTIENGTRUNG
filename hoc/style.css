@@ -141,3 +141,18 @@ main.wide { max-width: 1180px; }
 .pl-queue li.on { font-weight: 700; }
 .pl-queue a { color: var(--ink); }
 .pl-ctl .btn { margin: 0; }
+/* nghe từ vựng */
+.tw-card { text-align: center; position: sticky; top: 46px; z-index: 4; border-left: 4px solid var(--gold); }
+.tw-w { font-size: 2.6rem; margin: 0; line-height: 1.3; }
+.tw-py { font-size: 1.15rem; margin: 0; }
+.tw-vi { font-size: 1.15rem; margin: 4px 0; font-weight: 600; }
+.tw-ex { font-size: 1.05rem; margin: 6px 0 0; color: var(--muted); }
+.tw-ex b { color: var(--red); }
+.tw-src { font-size: .82rem; margin: 6px 0 0; }
+.tw-hide { visibility: hidden; }
+.tw-list { padding-left: 1.4em; margin: 6px 0 0; }
+.tw-list li { padding: 3px 0; }
+.tw-grp { list-style: none; margin: 10px 0 2px -1.4em; font-weight: 700; color: var(--red); }
+.tw-row { cursor: pointer; }
+.tw-row.on { background: var(--blank); border-radius: 6px; }
+.tw-row.tw-known { text-decoration: line-through; color: var(--muted); }

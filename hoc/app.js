@@ -159,16 +159,25 @@
     (t.notes || []).concat((t.adv && t.adv.v) || []).forEach(function (n) { if (n[0] && !seen[n[0]]) { seen[n[0]] = 1; out.push(n); } });
     return out;
   }
-  function plSel() { return store.get('pl:sel', []); }
-  function playlistView() {
-    crumb.textContent = ' › Nghe nhiều bài';
+  /* mode 'tu' = nghe từ vựng (đọc chữ Hán rồi nghĩa tiếng Việt); không có = nghe bài khóa */
+  function playlistView(mode) {
+    var W = mode === 'tu', P = W ? 'tw:' : 'pl:', has = W ? function (t) { return plWords(t).length; } : function (t) { return plParas(t).length; };
+    function plSel() { return store.get(P + 'sel', []); }
+    crumb.textContent = W ? ' › Nghe từ vựng' : ' › Nghe nhiều bài';
     app.innerHTML = '';
     var sel = {}; plSel().forEach(function (k) { sel[k] = 1; });
-    var opt = store.get('pl:opt', { rep: 1, gap: 0.6, mix: false, loop: false, show: true, vi: false, duo: true }); if (opt.duo == null) opt.duo = true;
-    function save() { store.set('pl:sel', Object.keys(sel).filter(function (k) { return sel[k]; })); store.set('pl:opt', opt); count(); }
-    app.appendChild(h('section', { class: 'hero' }, [
+    var opt = W ? store.get('tw:opt', { rep: 2, gap: 1.5, mix: false, loop: false, vi: true, ex: true, order: 0 })
+      : store.get('pl:opt', { rep: 1, gap: 0.6, mix: false, loop: false, show: true, vi: false, duo: true });
+    if (!W && opt.duo == null) opt.duo = true;
+    function save() { store.set(P + 'sel', Object.keys(sel).filter(function (k) { return sel[k]; })); store.set(P + 'opt', opt); count(); }
+    app.appendChild(h('section', { class: 'hero' }, W ? [
+      h('h1', null, ['🔤 Nghe từ vựng nhiều bài']),
+      h('p', { class: 'muted' }, ['Tích các môn, các bài muốn ôn từ mới. Máy đọc từng từ bằng tiếng Trung rồi đọc nghĩa tiếng Việt, kèm câu trong bài có từ đó, nối tiếp như một danh sách phát. Lựa chọn được nhớ cho lần sau.']),
+      h('a', { href: '#/nghe' }, ['🎧 Sang nghe bài khóa ›'])
+    ] : [
       h('h1', null, ['🎧 Nghe nhiều bài liên tục']),
-      h('p', { class: 'muted' }, ['Tích các môn, các bài khóa muốn nghe. Máy đọc nối tiếp từng câu như một danh sách phát; câu nào có từ khó thì từ đó sáng lên và nghĩa hiện ngay trong ô 💡 (có thể bật đọc to nghĩa tiếng Việt). Lựa chọn được nhớ cho lần sau.'])
+      h('p', { class: 'muted' }, ['Tích các môn, các bài khóa muốn nghe. Máy đọc nối tiếp từng câu như một danh sách phát; câu nào có từ khó thì từ đó sáng lên và nghĩa hiện ngay trong ô 💡 (có thể bật đọc to nghĩa tiếng Việt). Lựa chọn được nhớ cho lần sau.']),
+      h('a', { href: '#/nghe-tu' }, ['🔤 Sang nghe từ vựng ›'])
     ]));
     var cnt = h('b'), startB = h('button', { class: 'btn', on: { click: start } }, ['▶ Bắt đầu nghe']);
     function count() {
@@ -193,11 +202,11 @@
           if (filled || !sub) return; filled = true; list.innerHTML = '';
           sub.lessons.forEach(function (l) {
             l.texts.forEach(function (t) {
-              if (!plParas(t).length) return;
+              if (!has(t)) return;
               var k = s.id + ':' + t.id, c = h('input', { type: 'checkbox' }); c.checked = !!sel[k]; c.dataset.k = k; if (t.zh) c.dataset.g = 1;
               c.addEventListener('change', function () { sel[k] = c.checked; save(); refresh(); });
               boxes.push(c);
-              list.appendChild(h('label', { class: 'trow pl-row' }, [c, h('span', { class: 'tag' }, [(sub.read ? 'Ch.' : 'Bài ') + l.n]), h('span', { class: 'zh tt' }, [t.title]), t.kind ? h('span', { class: 'muted pl-kind zh' }, [t.kind]) : null]));
+              list.appendChild(h('label', { class: 'trow pl-row' }, [c, h('span', { class: 'tag' }, [(sub.read ? 'Ch.' : 'Bài ') + l.n]), h('span', { class: 'zh tt' }, [t.title]), W ? h('span', { class: 'muted pl-kind' }, [plWords(t).length + ' từ']) : t.kind ? h('span', { class: 'muted pl-kind zh' }, [t.kind]) : null]));
             });
           });
           refresh(); if (cb) cb();
@@ -223,7 +232,12 @@
       var s = h('select', null, vals.map(function (v) { return h('option', { value: v[0] }, [v[1]]); })); s.value = String(opt[key]);
       s.addEventListener('change', function () { opt[key] = +s.value; save(); }); return h('label', { class: 'pl-opt' }, [label + ' ', s]);
     }
-    app.appendChild(h('section', { class: 'card' }, [h('h3', null, ['Cách nghe']),
+    if (W) app.appendChild(h('section', { class: 'card' }, [h('h3', null, ['Cách nghe']),
+      h('div', { class: 'bar' }, [rateCtl(), pick('rep', 'Đọc chữ Hán', [[1, '1 lần'], [2, '2 lần'], [3, '3 lần']]), pick('gap', 'Nghỉ sau mỗi từ', [[0.5, '0,5 giây'], [1.5, '1,5 giây'], [3, '3 giây (kịp đọc theo)'], [5, '5 giây']]),
+        pick('order', 'Thứ tự', [[0, 'Tiếng Trung → nghĩa'], [1, 'Nghĩa → tiếng Trung (tự nhớ lại)']])]),
+      h('div', { class: 'bar' }, [ck('vi', 'Đọc to nghĩa tiếng Việt'), ck('ex', 'Đọc câu trong bài có từ đó'), ck('mix', 'Trộn thứ tự các từ'), ck('due', 'Bỏ qua từ đã đánh dấu ⭐ thuộc'), ck('loop', 'Hết danh sách thì nghe lại từ đầu')])
+    ]));
+    else app.appendChild(h('section', { class: 'card' }, [h('h3', null, ['Cách nghe']),
       h('div', { class: 'bar' }, [rateCtl(), pick('rep', 'Mỗi bài nghe', [[1, '1 lần'], [2, '2 lần'], [3, '3 lần']]), pick('gap', 'Nghỉ giữa các câu', [[0, 'không nghỉ'], [0.6, '0,6 giây'], [1.5, '1,5 giây'], [3, '3 giây (kịp nhẩm lại)']])]),
       h('div', { class: 'bar' }, [ck('mix', 'Trộn thứ tự các bài'), ck('loop', 'Hết danh sách thì nghe lại từ đầu'), ck('show', 'Hiện chữ khi nghe'), ck('vi', 'Đọc to nghĩa tiếng Việt của từ khó (lần đầu gặp trong bài)'), ck('duo', 'Hội thoại: mỗi người nói một giọng (nam/nữ)')])
     ]));
@@ -239,7 +253,8 @@
         if (i < ids.length) return loadSubject(ids[i], function () { next(i + 1); });
         var q = [];
         /* giữ thứ tự môn như danh sách môn, bài như trong sách */
-        SUBJECTS.forEach(function (s) { var sub = DB[s.id]; if (!sub) return; sub.lessons.forEach(function (l) { l.texts.forEach(function (t) { if (sel[s.id + ':' + t.id] && plParas(t).length) q.push({ sub: sub, l: l, t: t }); }); }); });
+        SUBJECTS.forEach(function (s) { var sub = DB[s.id]; if (!sub) return; sub.lessons.forEach(function (l) { l.texts.forEach(function (t) { if (sel[s.id + ':' + t.id] && has(t)) q.push({ sub: sub, l: l, t: t }); }); }); });
+        if (W) return wordPlayer(q, opt);
         if (opt.mix) q = shuffle(q);
         var full = []; q.forEach(function (x) { for (var r = 0; r < (opt.rep || 1); r++) full.push({ sub: x.sub, l: x.l, t: x.t, r: r }); });
         player(full, opt);
@@ -247,13 +262,31 @@
     }
   }
 
-  var viVoice = null;
+  var viVoice = null, wakeLock = null;
+  /* đọc một câu rồi gọi cb, nhưng chỉ khi live() còn đúng (người học bấm sang chỗ khác thì lượt cũ bỏ) */
+  function utter(text, lang, voice, live, cb) {
+    var done = false, began = Date.now(), u = new SpeechSynthesisUtterance(text);
+    u.lang = lang; u.rate = store.get('rate', 0.9);
+    if (lang === 'zh-CN' && zhVoice) u.voice = voice || zhVoice; if (lang === 'vi-VN' && viVoice) u.voice = viVoice;
+    function fin() { if (done) return; done = true; clearInterval(w); if (live()) cb(); }
+    u.onend = fin; u.onerror = fin;
+    /* phòng khi máy không báo đọc xong (hay gặp trên điện thoại) */
+    var w = setInterval(function () { var el = Date.now() - began; if ((el > 1500 && !speechSynthesis.speaking && !speechSynthesis.pending) || el > 4000 + text.length * 600 / u.rate) fin(); }, 400);
+    speechSynthesis.speak(u);
+  }
+  /* giữ màn hình sáng khi đang nghe (tắt màn hình thì trình duyệt ngừng đọc) */
+  function keepAwake(on) {
+    try {
+      if (on && !wakeLock && navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }, function () {});
+      if (!on && wakeLock) { wakeLock.release(); wakeLock = null; }
+    } catch (e) {}
+  }
   function pickVi() { viVoice = voicesFor(/^vi/i)[0] || null; }
   function player(queue, opt) {
     app.innerHTML = '';
     if (!window.speechSynthesis) { app.appendChild(h('p', { class: 'card' }, ['Trình duyệt này không đọc được tiếng Trung. Hãy dùng Chrome hoặc Edge.'])); return; }
     pickVi(); pickVoice();
-    var tok = 0, qi = 0, si = 0, segs = [], playing = false, said = {}, lock = null, timer = null;
+    var tok = 0, qi = 0, si = 0, segs = [], playing = false, said = {}, timer = null;
     var head = h('div', { class: 'pl-head' }), hint = h('div', { class: 'pl-hint card' }), art = h('article', { class: 'zh reading pl-art' }), upnext = h('ol', { class: 'pl-queue' });
     var pp = h('button', { class: 'btn', on: { click: function () { playing ? pause() : go(qi, si); } } }, ['⏸ Tạm dừng']);
     var ctl = h('div', { class: 'bar sticky pl-ctl' }, [
@@ -319,16 +352,7 @@
       hint.appendChild(dl);
     }
     /* đọc một câu; chỉ gọi tiếp khi vẫn đúng lượt (bấm nút khác thì lượt cũ bỏ) */
-    function say(text, lang, cb, voice) {
-      var my = tok, done = false, began = Date.now(), u = new SpeechSynthesisUtterance(text);
-      u.lang = lang; u.rate = store.get('rate', 0.9);
-      if (lang === 'zh-CN' && zhVoice) u.voice = voice || zhVoice; if (lang === 'vi-VN' && viVoice) u.voice = viVoice;
-      function fin() { if (done) return; done = true; clearInterval(w); if (my === tok) cb(); }
-      u.onend = fin; u.onerror = fin;
-      /* phòng khi máy không báo đọc xong (hay gặp trên điện thoại) */
-      var w = setInterval(function () { var el = Date.now() - began; if ((el > 1500 && !speechSynthesis.speaking && !speechSynthesis.pending) || el > 4000 + text.length * 600 / u.rate) fin(); }, 400);
-      speechSynthesis.speak(u);
-    }
+    function say(text, lang, cb, voice) { var my = tok; utter(text, lang, voice, function () { return my === tok; }, cb); }
     function later(ms, fn) { var my = tok; clearTimeout(timer); timer = setTimeout(function () { if (my === tok) fn(); }, ms); }
     function go(q, s) {
       tok++; speechSynthesis.cancel(); clearTimeout(timer);
@@ -364,14 +388,86 @@
       hint.appendChild(h('div', { class: 'bar' }, [h('button', { class: 'btn', on: { click: function () { segs = []; go(0, 0); } } }, ['↻ Nghe lại từ đầu']), h('button', { class: 'btn ghost', on: { click: playlistView } }, ['Chọn bài khác'])]));
     }
     /* giữ màn hình sáng khi đang nghe (tắt màn hình thì trình duyệt ngừng đọc) */
-    function wake(on) {
-      try {
-        if (on && !lock && navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { lock = l; }, function () {});
-        if (!on && lock) { lock.release(); lock = null; }
-      } catch (e) {}
-    }
+    var wake = keepAwake;
     if (opt.vi && !viVoice) hint.appendChild(h('p', { class: 'muted' }, ['Máy này chưa có giọng đọc tiếng Việt nên nghĩa chỉ hiện chữ, không đọc to.']));
     qi = -1; go(0, 0);
+  }
+
+  /* nghe từ vựng: mỗi từ đọc chữ Hán (1–3 lần), nghĩa tiếng Việt, rồi câu trong bài có từ đó */
+  function wordPlayer(texts, opt) {
+    app.innerHTML = '';
+    if (!window.speechSynthesis) { app.appendChild(h('p', { class: 'card' }, ['Trình duyệt này không đọc được tiếng Trung. Hãy dùng Chrome hoặc Edge.'])); return; }
+    pickVi(); pickVoice();
+    var items = [], seen = {}, d = today();
+    texts.forEach(function (x) {
+      var ss = sentences(x.t), srs = srsGet(x.sub.id);
+      plWords(x.t).forEach(function (n) {
+        var k = x.sub.id + ':' + n[0]; if (seen[k]) return; seen[k] = 1;
+        if (opt.due && srs[n[0]] && srs[n[0]].d > d) return; /* bỏ từ đã thuộc (chưa tới hạn ôn) */
+        items.push({ w: n[0], py: n[1], vi: n[2], sub: x.sub, l: x.l, t: x.t, ex: ss.filter(function (s) { return s.indexOf(n[0]) >= 0; })[0] || '' });
+      });
+    });
+    if (opt.mix) items = shuffle(items);
+    var tok = 0, i = 0, playing = false, timer = null;
+    var head = h('p', { class: 'muted' }), card = h('div', { class: 'card tw-card' }), list = h('ul', { class: 'tw-list' });
+    var pp = h('button', { class: 'btn', on: { click: function () { playing ? pause() : go(i); } } }, ['⏸ Tạm dừng']);
+    app.appendChild(head); app.appendChild(card);
+    app.appendChild(h('details', { class: 'card', open: true }, [h('summary', null, ['Danh sách từ (' + items.length + ')']), list]));
+    app.appendChild(h('div', { class: 'bar sticky pl-ctl' }, [
+      h('button', { class: 'btn ghost', title: 'Từ trước', on: { click: function () { go(Math.max(0, i - 1)); } } }, ['⏮']), pp,
+      h('button', { class: 'btn ghost', title: 'Từ sau', on: { click: function () { go(i + 1); } } }, ['⏭']),
+      h('button', { class: 'btn ghost', title: 'Đánh dấu đã thuộc và bỏ khỏi lượt nghe này', on: { click: known } }, ['⭐ Thuộc rồi']),
+      rateCtl(),
+      h('button', { class: 'btn ghost', on: { click: function () { pause(); playlistView('tu'); } } }, ['⏹ Chọn lại bài'])
+    ]));
+    var lastT = null;
+    items.forEach(function (x, k) {
+      if (x.t !== lastT) { lastT = x.t; list.appendChild(h('li', { class: 'tw-grp' }, [x.sub.name + ' · ' + (x.sub.read ? 'Ch.' : 'Bài ') + x.l.n + ' · ', h('span', { class: 'zh' }, [x.t.title])])); }
+      x.li = h('li', { class: 'tw-row', on: { click: function () { go(items.indexOf(x)); } } }, [h('b', { class: 'zh' }, [x.w]), ' ', h('span', { class: 'pl-py' }, [x.py]), ' · ' + x.vi]);
+      list.appendChild(x.li);
+    });
+    window.addEventListener('hashchange', pause, { once: true });
+    function say(text, lang, cb) { var my = tok; utter(text, lang, null, function () { return my === tok; }, cb); }
+    function later(ms, fn) { var my = tok; clearTimeout(timer); timer = setTimeout(function () { if (my === tok) fn(); }, ms); }
+    function show(x, reveal) {
+      card.innerHTML = '';
+      var zh = h('p', { class: 'zh tw-w' }, [x.w]), py = h('p', { class: 'pl-py tw-py' }, [x.py]), vi = h('p', { class: 'tw-vi' }, [x.vi]);
+      if (!reveal) { zh.classList.add('tw-hide'); py.classList.add('tw-hide'); }
+      card.appendChild(zh); card.appendChild(py); card.appendChild(vi);
+      if (x.ex) card.appendChild(h('p', { class: 'zh tw-ex', html: esc(x.ex).split(esc(x.w)).join('<b>' + esc(x.w) + '</b>') }));
+      card.appendChild(h('p', { class: 'muted tw-src' }, [x.sub.name + ' · ' + (x.sub.read ? 'Chương ' : 'Bài ') + x.l.n + ' · ' + x.t.title]));
+      head.textContent = 'Từ ' + (i + 1) + '/' + items.length;
+      items.forEach(function (y) { y.li.classList.toggle('on', y === x); });
+      if (x.li.scrollIntoView) x.li.scrollIntoView({ block: 'nearest' });
+    }
+    function go(k) {
+      tok++; speechSynthesis.cancel(); clearTimeout(timer);
+      if (k >= items.length) { if (opt.loop && items.length) k = 0; else return finish(); }
+      i = Math.max(0, k); playing = true; pp.textContent = '⏸ Tạm dừng'; keepAwake(true);
+      var x = items[i], n = 0, viOn = opt.vi !== false && viVoice;
+      function zh(cb) { show(x, true); (function rep() { say(x.w, 'zh-CN', function () { if (++n < (opt.rep || 1)) later(700, rep); else later(500, cb); }); })(); }
+      /* chưa có giọng tiếng Việt thì dừng một chút cho kịp đọc nghĩa */
+      function vi(cb) { if (viOn) say(x.vi, 'vi-VN', function () { later(400, cb); }); else later(1200 + x.vi.length * 50, cb); }
+      function ex(cb) { if (opt.ex && x.ex) say(x.ex, 'zh-CN', cb); else cb(); }
+      function next() { later((opt.gap || 0) * 1000 + 200, function () { go(i + 1); }); }
+      if (+opt.order === 1) { show(x, false); vi(function () { later(1500, function () { zh(function () { ex(next); }); }); }); }
+      else zh(function () { vi(function () { ex(next); }); });
+    }
+    function pause() { tok++; speechSynthesis.cancel(); clearTimeout(timer); playing = false; pp.textContent = '▶ Nghe tiếp'; keepAwake(false); }
+    function known() {
+      var x = items[i]; if (!x) return;
+      srsGrade(x.sub.id, x.w, true); x.li.classList.add('tw-known');
+      items.splice(i, 1); if (!items.length) return finish();
+      go(i);
+    }
+    function finish() {
+      pause(); card.innerHTML = '';
+      card.appendChild(h('p', null, ['✅ Đã nghe hết ' + items.length + ' từ.']));
+      card.appendChild(h('div', { class: 'bar' }, [h('button', { class: 'btn', on: { click: function () { go(0); } } }, ['↻ Nghe lại từ đầu']), h('button', { class: 'btn ghost', on: { click: function () { playlistView('tu'); } } }, ['Chọn bài khác'])]));
+    }
+    if (!items.length) return finish();
+    if (opt.vi !== false && !viVoice) app.insertBefore(h('p', { class: 'tip' }, ['Máy này chưa có giọng đọc tiếng Việt nên nghĩa chỉ hiện chữ (máy dừng một chút cho bạn đọc). Mở bằng Microsoft Edge sẽ có giọng tiếng Việt HoaiMy.']), card);
+    go(0);
   }
 
   /* ---------- lặp lại ngắt quãng cho từ vựng ---------- */
@@ -412,6 +508,7 @@
     window.scrollTo(0, 0);
     if (!parts[0]) return home();
     if (parts[0] === 'nghe') return playlistView();
+    if (parts[0] === 'nghe-tu') return playlistView('tu');
     if (parts[0] === 's') loadSubject(parts[1], function (sub) {
       if (!sub) return;
       if (parts[2] === 'tu-vung') return review(sub, parts[3]);
@@ -438,6 +535,7 @@
       return g;
     }
     app.appendChild(h('a', { class: 'card pl-cta', href: '#/nghe' }, [h('b', null, ['🎧 Nghe nhiều bài liên tục']), h('span', { class: 'muted' }, [' Chọn bài khóa ở nhiều môn, máy đọc nối tiếp, từ khó được nhắc nghĩa.'])]));
+    app.appendChild(h('a', { class: 'card pl-cta', href: '#/nghe-tu' }, [h('b', null, ['🔤 Nghe từ vựng nhiều bài']), h('span', { class: 'muted' }, [' Chọn bài ở nhiều môn, máy đọc từng từ mới bằng tiếng Trung rồi nghĩa tiếng Việt.'])]));
     app.appendChild(grid(SUBJECTS.filter(function (s) { return !s.nc; })));
     var adv = SUBJECTS.filter(function (s) { return s.nc; });
     if (adv.length) {
