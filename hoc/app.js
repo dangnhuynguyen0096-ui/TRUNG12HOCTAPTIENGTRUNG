@@ -25,6 +25,10 @@
       t.p = t.p.map(function (p) { return p.replace(/^[\^>|]/, ''); });
     }); });
     DB[s.id] = s;
+  }, gram: function (id, list) {
+    /* ngữ pháp từng bài (sinh bởi tools/build_grammar.js): chèn văn bản kind '语法' vào bài n ở vị trí i */
+    var s = DB[id]; if (!s) return;
+    list.forEach(function (g) { var l = s.lessons.filter(function (x) { return x.n === g.n; })[0]; if (l && !l.texts.some(function (t) { return t.id === g.t.id; })) l.texts.splice(Math.min(g.i, l.texts.length), 0, g.t); });
   } };
 
   /* ---------- tiện ích ---------- */
@@ -509,10 +513,11 @@
     if (!parts[0]) return home();
     if (parts[0] === 'nghe') return playlistView();
     if (parts[0] === 'nghe-tu') return playlistView('tu');
+    if (parts[0] === 'ngu-phap') return gramLibrary();
     if (parts[0] === 's') loadSubject(parts[1], function (sub) {
       if (!sub) return;
       if (parts[2] === 'tu-vung') return review(sub, parts[3]);
-      if (parts[2]) { var f = findText(sub, parts[2]); return f ? textView(sub, f.l, f.t, parts[3] || 'doc') : subjectView(sub); }
+      if (parts[2]) { var f = findText(sub, parts[2]); return f ? textView(sub, f.l, f.t, parts[3] || 'doc', parts[4]) : subjectView(sub); }
       subjectView(sub);
     });
   }
@@ -591,6 +596,7 @@
     }
     app.appendChild(h('a', { class: 'card pl-cta', href: '#/nghe' }, [h('b', null, ['🎧 Nghe nhiều bài liên tục']), h('span', { class: 'muted' }, [' Chọn bài khóa ở nhiều môn, máy đọc nối tiếp, từ khó được nhắc nghĩa.'])]));
     app.appendChild(h('a', { class: 'card pl-cta', href: '#/nghe-tu' }, [h('b', null, ['🔤 Nghe từ vựng nhiều bài']), h('span', { class: 'muted' }, [' Chọn bài ở nhiều môn, máy đọc từng từ mới bằng tiếng Trung rồi nghĩa tiếng Việt.'])]));
+    app.appendChild(h('a', { class: 'card pl-cta', href: '#/ngu-phap' }, [h('b', null, ['📚 Kho ngữ pháp thương mại']), h('span', { class: 'muted' }, [' Mọi điểm ngữ pháp của 3 môn thương mại, xếp từ cơ bản đến nâng cao, mỗi điểm giải thích một lần.'])]));
     app.appendChild(grid(SUBJECTS.filter(function (s) { return !s.nc; })));
     var adv = SUBJECTS.filter(function (s) { return s.nc; });
     if (adv.length) {
@@ -626,7 +632,7 @@
   }
 
   var TABS = [['doc', '📖 Đọc'], ['bt', '✍ Bài tập sách'], ['tu', '🃏 Từ vựng'], ['nghe', '🎧 Nghe'], ['noi', '🗣 Nói'], ['cau', '🧩 Câu & đoạn'], ['nc', '🔬 Nâng cao'], ['viet', '📝 Viết']];
-  function textView(sub, l, t, tab) {
+  function textView(sub, l, t, tab, anchor) {
     crumb.innerHTML = ' › <a href="#/s/' + sub.id + '">' + esc(sub.name) + '</a> › ' + (sub.read ? 'Chương ' : 'Bài ') + l.n;
     app.innerHTML = '';
     app.appendChild(h('div', { class: 'thead' }, [
@@ -638,6 +644,7 @@
     app.appendChild(nav);
     var body = h('div', { class: 'tabbody' }); app.appendChild(body);
     ({ doc: tabRead, bt: tabBook, tu: tabWords, nghe: tabListen, noi: tabSpeak, cau: tabSentence, nc: tabAdvanced, viet: tabWrite }[tab] || tabRead)(sub, l, t, body);
+    if (anchor) { var at = document.getElementById('gp-' + anchor); if (at) { at.open = true; at.classList.add('flash'); setTimeout(function () { at.scrollIntoView({ block: 'start' }); }, 30); } }
     /* nút sang văn bản tiếp theo */
     var all = []; sub.lessons.forEach(function (x) { x.texts.forEach(function (y) { all.push(y); }); });
     var i = all.indexOf(t), nx = h('div', { class: 'pager' });
@@ -746,6 +753,7 @@
     ]);
   }
   function tabRead(sub, l, t, body) {
+    if (t.gp) return tabGramPoints(sub, l, t, body);
     if (sub.read) return tabReader(sub, l, t, body);
     if (sub.listen) return tabListenText(sub, l, t, body);
     var timer = null, start = 0, chars = t.p.join('').replace(/[^\u4e00-\u9fff]/g, '').length;
@@ -771,6 +779,77 @@
       var nl = h('dl', { class: 'notes' });
       t.notes.forEach(function (n) { nl.appendChild(h('dt', { class: 'zh' }, [n[0]])); nl.appendChild(h('dd', null, [n[1] + ' · ' + n[2]])); });
       body.appendChild(h('details', { class: 'card' }, [h('summary', null, ['Chú thích từ (' + t.notes.length + ')']), nl]));
+    }
+  }
+
+  /* ---------- ngữ pháp từng bài (t.gp): mỗi điểm một thẻ, xếp Cơ bản → Trung cấp → Nâng cao.
+     Điểm đã giảng ở bài khác ({ref}) chỉ hiện tóm tắt + câu trong bài này + link tới nơi giảng đầy đủ. ---------- */
+  var LV = ['', 'Cơ bản', 'Trung cấp', 'Nâng cao'];
+  function bold(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+  function sayRow(z, vi) {
+    return h('p', { class: 'gp-ex' }, [h('button', { class: 'btn ghost sm', on: { click: function () { speak(spoken(z)); } } }, ['🔊']), ' ', h('span', { class: 'zh' }, [z]), vi ? h('span', { class: 'muted gp-vi' }, [vi]) : null]);
+  }
+  function gpHref(r) { return '#/s/' + r.s + '/' + r.t + '/doc/' + r.id; }
+  function gpCard(p, here) {
+    var d = h('details', { class: 'card gp lv' + p.lv, id: 'gp-' + (p.id || p.ref), open: true });
+    d.appendChild(h('summary', null, [h('span', { class: 'gp-lv' }, [LV[p.lv]]), ' ', h('b', { class: 'zh' }, [p.h]), ' ', h('span', { class: 'muted' }, [p.g])]));
+    if (p.ref) {
+      d.appendChild(h('p', { class: 'gp-ref' }, ['↪ Điểm này đã giảng đầy đủ ở ', h('a', { href: gpHref({ s: p.home.s, t: p.home.t, id: p.ref }) }, [p.home.name + ' · Bài ' + p.home.n]), '. Bấm để xem cấu trúc, cách dùng và lỗi hay gặp.']));
+      if (p.s) d.appendChild(h('p', { class: 'gp-s zh' }, [p.s]));
+    } else {
+      d.appendChild(h('div', { class: 'gp-sec' }, [h('h5', null, ['Cấu trúc']), h('p', { class: 'gp-s zh', html: bold(p.s) })]));
+      d.appendChild(h('div', { class: 'gp-sec' }, [h('h5', null, ['Ý nghĩa & cách dùng']), h('p', { html: bold(p.m) })]));
+      if (p.u) d.appendChild(h('div', { class: 'gp-sec' }, [h('h5', null, ['Trong văn bản / giao tiếp thương mại']), h('p', { html: bold(p.u) })]));
+    }
+    if (p.b && p.b.length) d.appendChild(h('div', { class: 'gp-sec' }, [h('h5', null, [p.ref ? 'Câu trong bài này' : 'Ví dụ trong bài']) ].concat(p.b.map(function (z) { return sayRow(z); }))));
+    if (!p.ref) {
+      if (p.e && p.e.length) d.appendChild(h('div', { class: 'gp-sec' }, [h('h5', null, ['Ví dụ thêm'])].concat(p.e.map(function (x) { return sayRow(x[0], x[1]); }))));
+      if (p.x && p.x.length) d.appendChild(h('div', { class: 'gp-sec' }, [h('h5', null, ['Lỗi thường gặp'])].concat(p.x.map(function (x) {
+        return h('div', { class: 'gp-err' }, [h('p', { class: 'zh bad' }, ['✗ ' + x[0]]), h('p', { class: 'zh good' }, ['✓ ' + x[1]]), x[2] ? h('p', { class: 'muted', html: bold(x[2]) }) : null]);
+      }))));
+      if (p.c) d.appendChild(h('div', { class: 'gp-sec' }, [h('h5', null, ['Phân biệt / mở rộng']), h('p', { html: bold(p.c) })]));
+      if (p.also && p.also.length) d.appendChild(h('p', { class: 'muted gp-also' }, ['Cũng gặp ở: '].concat(p.also.map(function (a, i) { return h('span', null, [i ? ' · ' : '', h('a', { href: '#/s/' + a.s + '/' + a.t + '/doc/' + p.id }, [a.name + ' bài ' + a.n])]); }))));
+    }
+    return d;
+  }
+  function tabGramPoints(sub, l, t, body) {
+    body.appendChild(h('p', { class: 'tip' }, ['Ngữ pháp của bài, xếp từ cơ bản đến nâng cao. Đọc cấu trúc, bấm 🔊 nghe câu ví dụ, xem lỗi hay gặp; điểm có dấu ↪ đã giảng ở bài khác, bấm link để tới đó. Làm bài ở tab Bài tập sách, đặt câu ở tab Nâng cao.']));
+    if (t.intro) body.appendChild(h('p', { class: 'card', html: bold(t.intro) }));
+    var nav = h('div', { class: 'gp-toc' });
+    t.gp.forEach(function (p) { nav.appendChild(h('a', { href: '#/s/' + sub.id + '/' + t.id + '/doc/' + (p.id || p.ref), class: 'lv' + p.lv }, [(p.ref ? '↪ ' : '') + p.h])); });
+    body.appendChild(nav);
+    [1, 2, 3].forEach(function (lv) {
+      var ps = t.gp.filter(function (p) { return p.lv === lv; }); if (!ps.length) return;
+      body.appendChild(h('h3', { class: 'gp-h' }, [LV[lv]]));
+      ps.forEach(function (p) { body.appendChild(gpCard(p)); });
+    });
+    body.appendChild(h('section', { class: 'card' }, [h('div', { class: 'bar' }, [h('button', { class: 'btn ghost', on: { click: function () { speak(t.zh.map(spoken).join('')); } } }, ['🔊 Nghe tất cả câu ví dụ']), h('button', { class: 'btn ghost', on: { click: function () { speechSynthesis.cancel(); } } }, ['⏸']), rateCtl()])]));
+  }
+  /* 📚 kho ngữ pháp: mọi điểm được giảng đầy đủ (không tính link) ở các môn có phần ngữ pháp t.gp */
+  function gramLibrary() {
+    crumb.textContent = ' › Kho ngữ pháp';
+    app.innerHTML = '';
+    app.appendChild(h('section', { class: 'hero' }, [h('h1', null, ['📚 Kho ngữ pháp thương mại']), h('p', { class: 'muted' }, ['Mỗi điểm ngữ pháp chỉ giảng một lần, ở bài nó xuất hiện đầu tiên; các bài sau có link quay về. Gõ để lọc (chữ Hán hoặc tiếng Việt, không dấu cũng được).'])]));
+    var inp = h('input', { type: 'search', class: 'sx-in', placeholder: '🔍 Lọc: 除了, nếu, bị động…' }), out = h('div');
+    app.appendChild(h('section', { class: 'card sx' }, [inp])); app.appendChild(out);
+    out.appendChild(h('p', { class: 'muted' }, ['Đang tải…']));
+    var ids = SUBJECTS.map(function (s) { return s.id; }).filter(function (id) { return /^(hntm|dtm|tmns)$/.test(id); });
+    var all = [];
+    (function next(i) { if (i < ids.length) return loadSubject(ids[i], function () { next(i + 1); }); draw(); })(0);
+    function draw() {
+      ids.forEach(function (id) { var sub = DB[id]; if (!sub) return; sub.lessons.forEach(function (l) { l.texts.forEach(function (t) { (t.gp || []).forEach(function (p) { if (!p.ref) all.push({ p: p, sub: sub, l: l, t: t, f: fold(p.h + ' ' + p.g + ' ' + p.s) }); }); }); }); });
+      inp.addEventListener('input', show); show();
+    }
+    function show() {
+      out.innerHTML = '';
+      var q = fold(inp.value.trim());
+      [1, 2, 3].forEach(function (lv) {
+        var rs = all.filter(function (r) { return r.p.lv === lv && (!q || r.f.indexOf(q) >= 0); }); if (!rs.length) return;
+        var box = h('section', { class: 'card' }, [h('h3', null, [LV[lv] + ' (' + rs.length + ')'])]);
+        rs.forEach(function (r) { box.appendChild(h('a', { class: 'trow', href: '#/s/' + r.sub.id + '/' + r.t.id + '/doc/' + r.p.id }, [h('span', { class: 'tag' }, [r.sub.name.replace('Hán ngữ thương mại', 'HNTM') + ' · B' + r.l.n]), h('span', { class: 'tt' }, [h('b', { class: 'zh' }, [r.p.h]), ' ', h('span', { class: 'muted' }, [r.p.g])]), r.p.also && r.p.also.length ? h('span', { class: 'score' }, ['+' + r.p.also.length + ' bài']) : null])); });
+        out.appendChild(box);
+      });
+      if (!out.children.length) out.appendChild(h('p', { class: 'muted' }, ['Không có điểm nào khớp.']));
     }
   }
 
@@ -805,7 +884,7 @@
   function tabBook(sub, l, t, body) {
     if (!t.ex || !t.ex.length) { body.appendChild(h('p', { class: 'card' }, ['Văn bản này không có bài tập trong sách. Hãy sang tab Câu & đoạn hoặc Nâng cao.'])); return; }
     var graders = [];
-    if (sub.listen) body.appendChild(listenBar(t));
+    if (sub.listen && !t.zh) body.appendChild(listenBar(t));
     t.ex.forEach(function (ex, i) {
       var card = h('section', { class: 'card ex' }, [h('h3', { class: 'zh' }, [(['一', '二', '三', '四', '五', '六', '七', '八'][i] || i + 1) + '、' + (ex.q || '')])]);
       if (ex.audio) card.appendChild(h('button', { class: 'btn ghost sm', on: { click: function () { speak(spoken(ex.audio)); } } }, ['🔊 Nghe phần này']));
