@@ -518,6 +518,60 @@
   }
   window.addEventListener('hashchange', route);
 
+  /* ---------- 🔍 tìm bài khóa trong mọi môn: theo tên bài, tên chương, loại bài, rồi tới nội dung ---------- */
+  function fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd'); }
+  function loadAll(cb) {
+    var ids = SUBJECTS.map(function (s) { return s.id; }).filter(function (id) { return !DB[id]; });
+    (function next(i) { if (i >= ids.length) return cb(); loadSubject(ids[i], function () { next(i + 1); }); })(0);
+  }
+  function searchBox() {
+    var inp = h('input', { type: 'search', class: 'sx-in', placeholder: '🔍 Tìm bài khóa: tên bài, chữ Hán, tiếng Việt…', autocomplete: 'off' });
+    var out = h('div', { class: 'sx-out' }), ready = false, waiting = false;
+    inp.value = store.get('sx', '');
+    function run() {
+      var q = inp.value.trim(); store.set('sx', q); out.innerHTML = '';
+      if (!q) return;
+      if (!ready) { out.appendChild(h('p', { class: 'muted' }, ['Đang tải danh sách bài…'])); if (!waiting) { waiting = true; loadAll(function () { ready = true; run(); }); } return; }
+      /* "bài 2", "chương 3": lọc đúng số bài, phần chữ còn lại tìm như thường */
+      var fqs = fold(q), num = null;
+      fqs = fqs.replace(/(?:^|\s)(?:bai|chuong|ch\.?)\s*(\d+)(?=\s|$)/, function (_, n) { num = n; return ' '; }).trim();
+      var fq = fqs.replace(/\s+/g, ''), terms = fqs.split(/\s+/).filter(Boolean), hit = [], body = [];
+      function inT(s) { var f = fold(s); return f.replace(/\s+/g, '').indexOf(fq) >= 0 || terms.length > 0 && terms.every(function (x) { return f.indexOf(x) >= 0; }); }
+      SUBJECTS.forEach(function (s) {
+        var sub = DB[s.id]; if (!sub) return;
+        sub.lessons.forEach(function (l) {
+          l.texts.forEach(function (t) {
+            var r = { s: sub, l: l, t: t };
+            if (num !== null) { if (String(l.n) !== num) return; if (!fq) return hit.push(r); }
+            if (inT(t.title) || inT(l.title) || inT(t.kind) || inT(sub.name)) return hit.push(r);
+            /* không trúng tên thì tìm trong nội dung (chỉ khi gõ chữ Hán, ít nhất 2 chữ) */
+            if (/[一-鿿]{2,}/.test(q)) {
+              var txt = (t.zh || t.p).join(''), k = txt.indexOf(q);
+              if (k >= 0) { r.snip = txt.slice(Math.max(0, k - 14), k + q.length + 14); body.push(r); }
+            }
+          });
+        });
+      });
+      if (!hit.length && !body.length) { out.appendChild(h('p', { class: 'muted' }, ['Không thấy bài nào khớp “' + q + '”.'])); return; }
+      function row(r) {
+        var a = h('a', { class: 'trow sx-row', href: '#/s/' + r.s.id + '/' + r.t.id }, [
+          h('span', { class: 'tag' }, [r.s.name]),
+          h('span', { class: 'tt' }, [h('span', { class: 'muted' }, [(r.s.read ? 'Chương ' : 'Bài ') + r.l.n + (r.l.title ? ' · ' : '')]), r.l.title ? h('span', { class: 'zh muted' }, [r.l.title + ' › ']) : null, h('b', { class: 'zh' }, [r.t.title]),
+            r.snip ? h('span', { class: 'zh sx-snip', html: '…' + esc(r.snip).split(esc(q)).join('<mark>' + esc(q) + '</mark>') + '…' }) : null]),
+          r.t.kind ? h('span', { class: 'muted pl-kind zh' }, [r.t.kind]) : null
+        ]);
+        return a;
+      }
+      out.appendChild(h('p', { class: 'muted sx-n' }, [hit.length + ' bài trùng tên' + (body.length ? ', ' + body.length + ' bài có “' + q + '” trong nội dung' : '')]));
+      hit.slice(0, 60).forEach(function (r) { out.appendChild(row(r)); });
+      if (body.length) { out.appendChild(h('p', { class: 'muted sx-n' }, ['Trong nội dung bài:'])); body.slice(0, 40).forEach(function (r) { out.appendChild(row(r)); }); }
+    }
+    var tm = null;
+    inp.addEventListener('input', function () { clearTimeout(tm); tm = setTimeout(run, 200); });
+    inp.addEventListener('focus', function () { if (!ready && !waiting) { waiting = true; loadAll(function () { ready = true; if (inp.value.trim()) run(); }); } });
+    if (inp.value.trim()) run();
+    return h('section', { class: 'card sx' }, [inp, out]);
+  }
   function home() {
     crumb.textContent = '';
     app.innerHTML = '';
@@ -525,6 +579,7 @@
       h('h1', null, ['Chọn môn học']),
       h('p', null, ['Mỗi môn đi theo đúng sách: bài tập trong sách app tự chấm, kèm luyện nghe, nói, ghép câu, phân tích câu và viết.'])
     ]));
+    app.appendChild(searchBox());
     function grid(list) {
       var g = h('div', { class: 'grid' });
       list.forEach(function (s) {
