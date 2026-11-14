@@ -6,6 +6,7 @@ var SUBJECTS = [
   { id: 'kn3', name: 'Nghe 3', book: '发展汉语 · 高级听力 (I)', skill: '听说' },
   { id: 'vud', name: 'Văn Ứng Dụng', book: '汉语应用文写作教程', skill: '写作' },
   { id: 'ky3', name: 'Khẩu ngữ 3', book: '发展汉语 · 高级口语 (I)', skill: '口语' },
+  { id: 'ky4', name: 'Khẩu ngữ 4', book: '发展汉语 · 高级口语 (II)', skill: '口语' },
   { id: 'hntm', name: 'Hán ngữ thương mại (viết)', book: '外贸写作 · 外贸书信', skill: '商务' },
   { id: 'dtm', name: 'Đọc thương mại', book: '国际商务汉语（上册）', skill: '商务' },
   { id: 'tmns', name: 'Hán ngữ thương mại (nghe nói)', book: '经贸汉语听和说', skill: '商务' },
